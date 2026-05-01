@@ -12,6 +12,7 @@ import Vendas from "@/pages/Vendas";
 import Devedores from "@/pages/Devedores";
 import Historico from "@/pages/Historico";
 import Links from "@/pages/Links";
+import ContatoAdmin from "@/pages/ContatoAdmin";
 import NotFound from "./pages/NotFound";
 
 import { CartProvider } from "@/contexts/CartContext";
@@ -44,6 +45,7 @@ function ProtectedRoutes() {
         <Route path="/vendas" element={<Vendas />} />
         <Route path="/devedores" element={<Devedores />} />
         <Route path="/historico" element={<Historico />} />
+        <Route path="/dashboard/contato" element={<ContatoAdmin />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>

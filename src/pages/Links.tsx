@@ -16,27 +16,29 @@ const links = [
     label: "🔥 Ver relógios disponíveis",
     sub: "Receba fotos, valores e condições",
     icon: Flame,
-    href: `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(whatsappMessage)}`,
+    href: `https://eternusrelogios.shop`,
     highlight: true,
   },
-  {
-    label: "💬 Falar no WhatsApp",
-    sub: "Atendimento rápido",
-    icon: MessageCircle,
-    href: `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(whatsappMessage)}`,
-  },
-  {
-    label: "⭐ Avaliações de clientes",
-    sub: "Veja quem já comprou",
-    icon: Star,
-    href: `https://instagram.com/${INSTAGRAM}`,
-  },
+  // {
+  //   label: "💬 Falar no WhatsApp",
+  //   sub: "Atendimento rápido",
+  //   icon: MessageCircle,
+  //   href: `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(whatsappMessage)}`,
+  // },
   {
     label: "📸 Nosso Instagram",
     sub: `@${INSTAGRAM}`,
     icon: Instagram,
     href: `https://instagram.com/${INSTAGRAM}`,
   },
+
+  {
+    label: "⭐ Avaliações de clientes",
+    sub: "Veja quem já comprou",
+    icon: Star,
+    href: `https://www.instagram.com/stories/highlights/18362155528201111/`,
+  },
+
 ];
 
 const ParticlesBackground = () => {

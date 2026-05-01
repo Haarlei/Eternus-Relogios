@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      contatos: {
+        Row: {
+          criado_em: string
+          email: string
+          id: string
+          lida: boolean
+          mensagem: string
+          nome: string
+          telefone: string | null
+        }
+        Insert: {
+          criado_em?: string
+          email: string
+          id?: string
+          lida?: boolean
+          mensagem: string
+          nome: string
+          telefone?: string | null
+        }
+        Update: {
+          criado_em?: string
+          email?: string
+          id?: string
+          lida?: boolean
+          mensagem?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Relationships: []
+      }
       devedores: {
         Row: {
           criado_em: string

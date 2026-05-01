@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "serve -l tcp://0.0.0.0:8080 dist"
+    "start": "serve -s -l tcp://0.0.0.0:8080 dist"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

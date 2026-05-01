@@ -1,10 +1,11 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, Watch, Menu, X, History } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, Watch, Menu, X, History, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -12,12 +13,38 @@ const navItems = [
   { to: "/vendas", label: "Vendas", icon: ShoppingCart },
   { to: "/devedores", label: "Devedores", icon: Users },
   { to: "/historico", label: "Histórico", icon: History },
+  { to: "/dashboard/contato", label: "Contato Cliente", icon: MessageCircle, badge: true },
 ];
+
+function useContatosNaoLidos() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    async function fetch() {
+      const { count: c } = await supabase
+        .from("contatos")
+        .select("*", { count: "exact", head: true })
+        .eq("lida", false);
+      setCount(c ?? 0);
+    }
+    fetch();
+
+    const channel = supabase
+      .channel("layout-contatos-badge")
+      .on("postgres_changes", { event: "*", schema: "public", table: "contatos" }, fetch)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  return count;
+}
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const naoLidas = useContatosNaoLidos();
 
   return (
     <div className="flex min-h-screen">
@@ -42,20 +69,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              onClick={() => setSidebarOpen(false)}
-              className={cn(
-                "sidebar-link",
-                location.pathname === to ? "sidebar-link-active" : "sidebar-link-inactive"
-              )}
-            >
-              <Icon className="w-5 h-5" />
-              {label}
-            </Link>
-          ))}
+          {navItems.map(({ to, label, icon: Icon, badge }) => {
+            const isActive = location.pathname === to;
+            const showBadge = badge && naoLidas > 0;
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  "sidebar-link",
+                  isActive ? "sidebar-link-active" : "sidebar-link-inactive"
+                )}
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                <span className="flex-1">{label}</span>
+                {showBadge && (
+                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold leading-none">
+                    {naoLidas > 99 ? "99+" : naoLidas}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="px-3 pb-4 border-t border-sidebar-border pt-4">

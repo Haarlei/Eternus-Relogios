@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
@@ -9,6 +9,83 @@ import { ShieldCheck, Truck, Star, ArrowRight } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Produto = Tables<"produtos">;
+
+const InteractiveGridTrails = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = canvas.width = canvas.offsetWidth;
+    let height = canvas.height = canvas.offsetHeight;
+
+    const gridSize = 24;
+    const squares: { x: number, y: number, opacity: number }[] = [];
+
+    const handleResize = () => {
+      width = canvas.width = canvas.offsetWidth;
+      height = canvas.height = canvas.offsetHeight;
+    };
+    window.addEventListener("resize", handleResize);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      if (x < 0 || x > width || y < 0 || y > height) return;
+
+      const gridX = Math.floor(x / gridSize) * gridSize;
+      const gridY = Math.floor(y / gridSize) * gridSize;
+
+      const existingSquare = squares.find(sq => sq.x === gridX && sq.y === gridY);
+      if (existingSquare) {
+        existingSquare.opacity = 1;
+      } else {
+        squares.push({ x: gridX, y: gridY, opacity: 1 });
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+      
+      const rootStyle = getComputedStyle(document.documentElement);
+      const primaryHsl = rootStyle.getPropertyValue('--primary').trim().split(' ').join(', ');
+      
+      for (let i = squares.length - 1; i >= 0; i--) {
+        const sq = squares[i];
+        sq.opacity -= 0.02; // fade out speed
+        
+        if (sq.opacity <= 0) {
+          squares.splice(i, 1);
+          continue;
+        }
+
+        // Fallback or dynamic primary color
+        ctx.fillStyle = `hsla(${primaryHsl ? primaryHsl.replace(/,/g, '') : '0 0% 100%'} / ${sq.opacity * 0.4})`;
+        ctx.fillRect(sq.x, sq.y, gridSize, gridSize);
+      }
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 z-0 h-full w-full pointer-events-none" />;
+};
 
 export default function StoreHome() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -38,14 +115,17 @@ export default function StoreHome() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-card border-b border-border/40 py-16 md:py-24">
-        <div className="absolute inset-0 bg-gradient-to-r from-background to-background/50 z-10" />
+      <section className="relative overflow-hidden bg-background border-b border-border/40 py-16 md:py-24">
+        {/* Vercel-style Blueprint Grid Background */}
+        <div className="absolute inset-0 z-0 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+        <InteractiveGridTrails />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/50 to-background/20 z-10 pointer-events-none" />
         <div className="container relative z-20 mx-auto px-4 flex flex-col items-center text-center">
-          <Badge variant="outline" className="mb-4 bg-background/50 backdrop-blur-sm border-primary/20 text-primary px-3 py-1 text-xs">
+          <Badge variant="outline" className="mb-4 bg-background/50 backdrop-blur-sm border-primary/20 text-primary px-3 py-1 text-xs animate-float shadow-[0_0_15px_var(--primary)]/20">
             🌟 Coleção Exclusiva
           </Badge>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 max-w-3xl">
-            Relógios premium com entrega rápida e <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary/80 to-primary">parcelamento facilitado</span>
+            Relógios com entrega rápida e <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary/80 to-primary">pagamentos facilitado</span>
           </h1>
           <p className="text-muted-foreground text-lg mb-8 max-w-2xl">
             Descubra nossa seleção de relógios originais. Design sofisticado e qualidade impecável direto para o seu pulso.
@@ -59,11 +139,11 @@ export default function StoreHome() {
           <div className="flex flex-wrap justify-center gap-4 md:gap-8 mt-12 opacity-80">
             <div className="flex items-center gap-2">
               <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-              <span className="text-sm font-medium">+500 clientes atendidos</span>
+              <span className="text-sm font-medium">+50 clientes atendidos</span>
             </div>
             <div className="flex items-center gap-2">
               <Truck className="w-5 h-5 text-blue-500" />
-              <span className="text-sm font-medium">Entrega para todo Brasil</span>
+              <span className="text-sm font-medium">Entrega Rápida</span>
             </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
@@ -77,15 +157,14 @@ export default function StoreHome() {
       <section id="produtos" className="py-16 container mx-auto px-4 flex-1">
         <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Nossos Modelos</h2>
-          
+
           <div className="flex bg-card p-1 rounded-xl border border-border/50">
             {["todos", "masculino", "feminino", "unisex"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-colors ${
-                  filter === f ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-colors ${filter === f ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 {f}
               </button>
@@ -152,7 +231,7 @@ export default function StoreHome() {
             })}
           </div>
         )}
-        
+
         {!loading && filteredProdutos.length === 0 && (
           <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border">
             <p className="text-lg text-muted-foreground">Nenhum produto encontrado nesta categoria.</p>
