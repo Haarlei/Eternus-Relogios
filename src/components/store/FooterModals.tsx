@@ -2,8 +2,17 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { Link } from "react-router-dom";
-import type { Tables } from "@/integrations/supabase/types";
 import { Search } from "lucide-react";
+
+// Tipo local com apenas os campos públicos necessários para a busca da vitrine
+type ProdutoPublico = {
+  id: string;
+  nome_produto: string;
+  genero: string | null;
+  imagem_url: string | null;
+  preco_com_margem: number;
+  estoque_atual: number;
+};
 import {
   Dialog,
   DialogContent,
@@ -29,11 +38,11 @@ interface FooterModalProps {
   type: "sobre" | "pagamento" | "contato" | "faq" | "confiavel" | "trocas" | "politicas" | "pesquisar";
 }
 
-type Produto = Tables<"produtos">;
+
 
 function SearchContent({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Produto[]>([]);
+  const [results, setResults] = useState<ProdutoPublico[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -46,11 +55,11 @@ function SearchContent({ onClose }: { onClose: () => void }) {
     setSearching(true);
     const { data } = await supabase
       .from("produtos")
-      .select("*")
+      .select("id, nome_produto, genero, imagem_url, preco_com_margem, estoque_atual")
       .ilike("nome_produto", `%${q}%`)
       .gt("estoque_atual", 0)
       .order("nome_produto");
-    setResults(data || []);
+    setResults((data as ProdutoPublico[]) || []);
     setSearched(true);
     setSearching(false);
   }, []);
@@ -85,7 +94,7 @@ function SearchContent({ onClose }: { onClose: () => void }) {
       {!searching && results.length > 0 && (
         <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
           {results.map((p) => {
-            const preco = p.preco_com_margem ?? (p.preco_fornecedor * (1 + p.margem / 100));
+            const preco = p.preco_com_margem;
             return (
               <Link
                 key={p.id}

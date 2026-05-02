@@ -33,9 +33,9 @@ export default function Dashboard() {
 
   const loadDashboard = async () => {
     const [produtosRes, vendasRes, parcelasRes] = await Promise.all([
-      supabase.from("produtos").select("*"),
-      supabase.from("vendas").select("*, produtos(nome_produto)").order("criado_em", { ascending: false }),
-      supabase.from("parcelas").select("*"),
+      supabase.from("produtos").select("preco_fornecedor, estoque_inicial"),
+      supabase.from("vendas").select("id, produto_id, quantidade, metodo_pagamento, tipo_cartao, valor_bruto, valor_liquido, criado_em, status_pagamento, produtos(nome_produto)").order("criado_em", { ascending: false }),
+      supabase.from("parcelas").select("id, venda_id, valor_parcela, status, data_vencimento"),
     ]);
 
     const produtos = produtosRes.data || [];

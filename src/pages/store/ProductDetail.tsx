@@ -8,9 +8,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldCheck, Truck, MessageCircle, ShoppingCart, ArrowLeft, CheckCircle2, Box } from "lucide-react";
 import { toast } from "sonner";
-import type { Tables } from "@/integrations/supabase/types";
-
-type Produto = Tables<"produtos">;
+// Tipo local com apenas os campos públicos necessários para a página de detalhe
+type Produto = {
+  id: string;
+  nome_produto: string;
+  descricao: string | null;
+  genero: string | null;
+  imagem_url: string | null;
+  galeria_imagens: string[] | null;
+  especificacoes: Record<string, unknown> | null;
+  preco_com_margem: number;
+  estoque_atual: number;
+};
 
 const WHATSAPP = "5585987939498";
 
@@ -27,12 +36,12 @@ export default function ProductDetail() {
       if (!id) return;
       const { data, error } = await supabase
         .from("produtos")
-        .select("*")
+        .select("id, nome_produto, descricao, genero, imagem_url, galeria_imagens, especificacoes, preco_com_margem, estoque_atual")
         .eq("id", id)
         .single();
 
       if (!error && data) {
-        setProduto(data);
+        setProduto(data as Produto);
         setActiveImage(data.imagem_url || (data.galeria_imagens && data.galeria_imagens.length > 0 ? data.galeria_imagens[0] : null));
       }
       setLoading(false);
@@ -62,7 +71,7 @@ export default function ProductDetail() {
     );
   }
 
-  const preco = produto.preco_com_margem || (produto.preco_fornecedor * (1 + produto.margem / 100));
+  const preco = produto.preco_com_margem;
   const esgotado = produto.estoque_atual <= 0;
   
   const allImages = [];

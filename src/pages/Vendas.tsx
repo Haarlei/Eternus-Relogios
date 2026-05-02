@@ -11,9 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ShoppingCart, Plus } from "lucide-react";
 import { logAtividade } from "@/lib/logger";
-import type { Tables } from "@/integrations/supabase/types";
-
-type Produto = Tables<"produtos">;
+// Tipo local com apenas os campos necessários para o formulário de vendas
+type Produto = {
+  id: string;
+  nome_produto: string;
+  imagem_url: string | null;
+  estoque_atual: number;
+  preco_com_margem: number;
+  preco_debito: number | null;
+  preco_credito: number | null;
+  preco_credito_2x: number | null;
+};
 
 export default function Vendas() {
   const { user } = useAuth();
@@ -30,7 +38,11 @@ export default function Vendas() {
   useEffect(() => { if (user) loadProdutos(); }, [user]);
 
   const loadProdutos = async () => {
-    const { data } = await supabase.from("produtos").select("*").gt("estoque_atual", 0).order("nome_produto");
+    const { data } = await supabase
+      .from("produtos")
+      .select("id, nome_produto, imagem_url, estoque_atual, preco_com_margem, preco_debito, preco_credito, preco_credito_2x")
+      .gt("estoque_atual", 0)
+      .order("nome_produto");
     setProdutos(data || []);
   };
 

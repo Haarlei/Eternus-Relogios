@@ -1,33 +1,52 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+// Expõe apenas o mínimo necessário — sem Session completa com tokens
+interface SafeUser {
+  id: string;
+  email: string | undefined;
+}
+
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: SafeUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Mensagens de erro genéricas — sem vazar detalhes técnicos do Supabase
+function mapAuthError(message: string): string {
+  if (message.includes("Invalid login credentials")) return "E-mail ou senha incorretos.";
+  if (message.includes("Email not confirmed")) return "Confirme seu e-mail antes de entrar.";
+  if (message.includes("Too many requests")) return "Muitas tentativas. Aguarde alguns minutos.";
+  if (message.includes("User already registered")) return "Este e-mail já está cadastrado.";
+  return "Erro ao autenticar. Tente novamente.";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<SafeUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Escuta mudanças de sessão — armazena apenas id e email
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email });
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
+    // Verifica sessão existente ao carregar
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email });
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -36,21 +55,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  };
-
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
-    if (error) throw error;
+    if (error) throw new Error(mapAuthError(error.message));
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

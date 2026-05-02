@@ -19,6 +19,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import StoreLayout from "@/components/StoreLayout";
 import StoreHome from "@/pages/store/Home";
 import ProductDetail from "@/pages/store/ProductDetail";
+import Catalog from "@/pages/store/Catalog";
 import Cart from "@/pages/store/Cart";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
@@ -64,8 +65,9 @@ const App = () => (
               <Routes>
                 <Route path="/links" element={<Links />} />
 
-                {/* Rotas da Loja Virtual */}
+                {/* Rotas da Loja Virtual (Públicas) */}
                 <Route path="/" element={<StoreLayout><StoreHome /></StoreLayout>} />
+                <Route path="/colecao" element={<StoreLayout><Catalog /></StoreLayout>} />
                 <Route path="/produto/:id" element={<StoreLayout><ProductDetail /></StoreLayout>} />
                 <Route path="/carrinho" element={<StoreLayout><Cart /></StoreLayout>} />
 

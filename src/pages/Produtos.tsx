@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Package, Pencil, Trash2, Eye, EyeOff, X, ImagePlus } from "lucide-react";
+import { Plus, Package, Pencil, Trash2, Eye, EyeOff, X, ImagePlus, Crown } from "lucide-react";
 import { logAtividade } from "@/lib/logger";
 import type { Tables } from "@/integrations/supabase/types";
 type Produto = Tables<"produtos">;
@@ -46,6 +46,8 @@ export default function Produtos() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingGallery, setExistingGallery] = useState<string[]>([]);
   const [existingMainImage, setExistingMainImage] = useState<string | null>(null);
+  // Index da imagem nova que será a principal (-1 = nenhuma nova definida, usa a primeira)
+  const [newMainImageIndex, setNewMainImageIndex] = useState<number>(-1);
 
   useEffect(() => { if (user) loadProdutos(); }, [user]);
 
@@ -60,6 +62,7 @@ export default function Produtos() {
     setImageFiles([]);
     setExistingGallery([]);
     setExistingMainImage(null);
+    setNewMainImageIndex(-1);
     setEditing(null);
   };
 
@@ -91,15 +94,39 @@ export default function Produtos() {
   };
 
   const removeNewImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      // Ajusta o índice principal se necessário
+      if (newMainImageIndex === index) setNewMainImageIndex(-1);
+      else if (newMainImageIndex > index) setNewMainImageIndex(n => n - 1);
+      return next;
+    });
   };
-  
+
   const removeExistingImage = (url: string) => {
     if (url === existingMainImage) {
-      setExistingMainImage(null);
+      // Promove a primeira da galeria como principal, se houver
+      const next = existingGallery[0] ?? null;
+      setExistingMainImage(next);
+      setExistingGallery(prev => prev.slice(1));
     } else {
       setExistingGallery(prev => prev.filter(img => img !== url));
     }
+  };
+
+  // Promove uma imagem existente (galeria) para foto principal
+  const promoteExistingToMain = (url: string) => {
+    if (existingMainImage) {
+      setExistingGallery(prev => [existingMainImage, ...prev.filter(i => i !== url)]);
+    } else {
+      setExistingGallery(prev => prev.filter(i => i !== url));
+    }
+    setExistingMainImage(url);
+  };
+
+  // Promove uma imagem nova (ainda não salva) para foto principal
+  const promoteNewToMain = (index: number) => {
+    setNewMainImageIndex(index);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,10 +135,11 @@ export default function Produtos() {
     setLoading(true);
 
     try {
-      let finalMainImage = existingMainImage;
-      let finalGallery = [...existingGallery];
+      let finalMainImage: string | null = existingMainImage;
+      let finalGallery: string[] = [...existingGallery];
 
       if (imageFiles.length > 0) {
+        // Faz upload de todas as novas imagens mantendo a ordem
         const uploadedUrls: string[] = [];
         for (const file of imageFiles) {
           const ext = file.name.split(".").pop();
@@ -121,24 +149,49 @@ export default function Produtos() {
           const { data: urlData } = supabase.storage.from("produtos").getPublicUrl(path);
           uploadedUrls.push(urlData.publicUrl);
         }
-        
-        if (!finalMainImage && uploadedUrls.length > 0) {
-          finalMainImage = uploadedUrls.shift() || null;
+
+        const chosenIndex = newMainImageIndex >= 0 && newMainImageIndex < uploadedUrls.length
+          ? newMainImageIndex : 0;
+
+        if (!finalMainImage) {
+          finalMainImage = uploadedUrls[chosenIndex];
+          finalGallery = [...finalGallery, ...uploadedUrls.filter((_, i) => i !== chosenIndex)];
+        } else if (newMainImageIndex >= 0) {
+          finalGallery = [finalMainImage, ...finalGallery, ...uploadedUrls.filter((_, i) => i !== chosenIndex)];
+          finalMainImage = uploadedUrls[chosenIndex];
+        } else {
+          finalGallery = [...finalGallery, ...uploadedUrls];
         }
-        finalGallery = [...finalGallery, ...uploadedUrls];
       }
 
-      const payload = { 
-        ...form, 
-        imagem_url: finalMainImage, 
-        galeria_imagens: finalGallery,
+      // Monta payload separando dados do formulário dos dados de imagem
+      // para garantir que imagem_url e galeria_imagens sejam sempre salvos corretamente
+      const formPayload = {
+        ...form,
         especificacoes: specs,
-        user_id: user.id 
+        user_id: user.id,
+      };
+
+      const imagePayload = {
+        imagem_url: finalMainImage,
+        galeria_imagens: finalGallery,
       };
 
       if (editing) {
-        const { error } = await supabase.from("produtos").update(payload).eq("id", editing.id);
-        if (error) throw error;
+        // Atualiza dados do formulário
+        const { error: formError } = await supabase
+          .from("produtos")
+          .update(formPayload)
+          .eq("id", editing.id);
+        if (formError) throw formError;
+
+        // Atualiza imagens separadamente — garante que imagem_url seja persistido
+        const { error: imgError } = await supabase
+          .from("produtos")
+          .update(imagePayload)
+          .eq("id", editing.id);
+        if (imgError) throw imgError;
+
         await logAtividade({
           userId: user.id, email: user.email, entidade: "produto", entidadeId: editing.id,
           acao: "edicao", descricao: `Produto "${form.nome_produto}" atualizado`,
@@ -146,7 +199,11 @@ export default function Produtos() {
         });
         toast.success("Produto atualizado!");
       } else {
-        const { data: novo, error } = await supabase.from("produtos").insert(payload).select().single();
+        const { data: novo, error } = await supabase
+          .from("produtos")
+          .insert({ ...formPayload, ...imagePayload })
+          .select()
+          .single();
         if (error) throw error;
         await logAtividade({
           userId: user.id, email: user.email, entidade: "produto", entidadeId: novo?.id,
@@ -285,34 +342,111 @@ export default function Produtos() {
                         <Input type="file" accept="image/*" multiple onChange={handleImageChange} className="cursor-pointer" />
                       </div>
                       
-                      {/* Mostrar imagens selecionadas ou já existentes */}
-                      <div className="flex flex-wrap gap-2 mt-2">
+                      {/* Galeria interativa — hover mostra coroa e X */}
+                      <div className="flex flex-wrap gap-3 mt-3">
+
+                        {/* ── Foto Principal Existente ── */}
                         {existingMainImage && (
-                          <div className="relative w-20 h-20 rounded-md overflow-hidden border border-border group">
-                            <img src={existingMainImage} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <button type="button" onClick={() => removeExistingImage(existingMainImage)} className="text-white hover:text-red-400"><X className="w-5 h-5"/></button>
+                          <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-primary group shadow-md flex-shrink-0">
+                            <img src={existingMainImage} alt="Principal" className="w-full h-full object-cover" />
+                            {/* Overlay hover */}
+                            <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => removeExistingImage(existingMainImage)}
+                                title="Remover foto"
+                                className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
                             </div>
-                            <span className="absolute bottom-0 left-0 right-0 bg-primary/80 text-[10px] text-white text-center py-0.5">Principal</span>
+                            {/* Badge principal */}
+                            <div className="absolute top-1 left-1 bg-primary rounded-full p-0.5 shadow">
+                              <Crown className="w-3 h-3 text-white" />
+                            </div>
+                            <span className="absolute bottom-0 left-0 right-0 bg-primary/85 text-[9px] text-white text-center py-0.5 font-semibold tracking-wide">PRINCIPAL</span>
                           </div>
                         )}
+
+                        {/* ── Galeria Existente ── */}
                         {existingGallery.map((url, i) => (
-                          <div key={i} className="relative w-20 h-20 rounded-md overflow-hidden border border-border group">
-                            <img src={url} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <button type="button" onClick={() => removeExistingImage(url)} className="text-white hover:text-red-400"><X className="w-5 h-5"/></button>
+                          <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-border group shadow-sm flex-shrink-0 hover:border-border/80 transition-colors">
+                            <img src={url} alt={`Galeria ${i + 1}`} className="w-full h-full object-cover" />
+                            {/* Overlay hover */}
+                            <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => promoteExistingToMain(url)}
+                                title="Definir como foto principal"
+                                className="w-8 h-8 rounded-full bg-yellow-500/90 hover:bg-yellow-400 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                              >
+                                <Crown className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingImage(url)}
+                                title="Remover foto"
+                                className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                         ))}
-                        {imageFiles.map((file, i) => (
-                          <div key={`new-${i}`} className="relative w-20 h-20 rounded-md overflow-hidden border border-border group">
-                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-80" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <button type="button" onClick={() => removeNewImage(i)} className="text-white hover:text-red-400"><X className="w-5 h-5"/></button>
+
+                        {/* ── Novas Imagens (ainda não salvas) ── */}
+                        {imageFiles.map((file, i) => {
+                          const isChosenMain = newMainImageIndex === i;
+                          return (
+                            <div
+                              key={`new-${i}`}
+                              className={`relative w-24 h-24 rounded-xl overflow-hidden border-2 group shadow-sm flex-shrink-0 transition-colors ${
+                                isChosenMain ? "border-yellow-400 shadow-yellow-200" : "border-blue-400/60"
+                              }`}
+                            >
+                              <img src={URL.createObjectURL(file)} alt={`Nova ${i + 1}`} className="w-full h-full object-cover" />
+                              {/* Overlay hover */}
+                              <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                                {!isChosenMain && (
+                                  <button
+                                    type="button"
+                                    onClick={() => promoteNewToMain(i)}
+                                    title="Definir como foto principal"
+                                    className="w-8 h-8 rounded-full bg-yellow-500/90 hover:bg-yellow-400 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                                  >
+                                    <Crown className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => removeNewImage(i)}
+                                  title="Remover foto"
+                                  className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                              {/* Badges */}
+                              {isChosenMain ? (
+                                <>
+                                  <div className="absolute top-1 left-1 bg-yellow-400 rounded-full p-0.5 shadow">
+                                    <Crown className="w-3 h-3 text-white" />
+                                  </div>
+                                  <span className="absolute bottom-0 left-0 right-0 bg-yellow-500/90 text-[9px] text-white text-center py-0.5 font-semibold tracking-wide">PRINCIPAL</span>
+                                </>
+                              ) : (
+                                <span className="absolute top-1 right-1 bg-blue-500/85 text-[8px] text-white px-1.5 py-0.5 rounded-full font-medium">NOVO</span>
+                              )}
                             </div>
-                            <span className="absolute top-0 right-0 bg-blue-500/80 text-[10px] text-white px-1">Novo</span>
-                          </div>
-                        ))}
+                          );
+                        })}
+
+                        {/* Dica quando há imagens */}
+                        {(existingMainImage || existingGallery.length > 0 || imageFiles.length > 0) && (
+                          <p className="w-full text-xs text-muted-foreground mt-1">
+                            Passe o mouse sobre a foto para ver as opções — <Crown className="w-3 h-3 inline text-yellow-500" /> define como principal · <X className="w-3 h-3 inline text-red-400" /> remove
+                          </p>
+                        )}
                       </div>
                     </div>
 
