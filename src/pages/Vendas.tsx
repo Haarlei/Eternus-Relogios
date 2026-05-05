@@ -26,16 +26,41 @@ type Produto = {
 export default function Vendas() {
   const { user } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [clientes, setClientes] = useState<{ id: string; nome: string; telefone: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     produto_id: "", quantidade: 1, metodo_pagamento: "dinheiro",
     tipo_cartao: "", numero_parcelas: 1, possui_juros: false, taxa_juros_mensal: 0,
-    nome_devedor: "", telefone_devedor: "",
+    nome_cliente: "", telefone_cliente: "",
     data_vencimento_pagamento: "",
     desconto: 0,
+    usar_datas_customizadas: false,
   });
+  const [datasParcelas, setDatasParcelas] = useState<string[]>([]);
 
-  useEffect(() => { if (user) loadProdutos(); }, [user]);
+  useEffect(() => { 
+    if (user) {
+      loadProdutos();
+      loadClientes();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    // Inicializa ou ajusta as datas das parcelas quando o número muda
+    setDatasParcelas(prev => {
+      const novas = [...prev];
+      if (novas.length < form.numero_parcelas) {
+        for (let i = novas.length; i < form.numero_parcelas; i++) {
+          const d = new Date();
+          d.setMonth(d.getMonth() + i + 1);
+          novas.push(d.toISOString().split("T")[0]);
+        }
+      } else {
+        return novas.slice(0, form.numero_parcelas);
+      }
+      return novas;
+    });
+  }, [form.numero_parcelas]);
 
   const loadProdutos = async () => {
     const { data } = await supabase
@@ -44,6 +69,20 @@ export default function Vendas() {
       .gt("estoque_atual", 0)
       .order("nome_produto");
     setProdutos(data || []);
+  };
+
+  const loadClientes = async () => {
+    const { data } = await supabase.from("clientes").select("id, nome, telefone").order("nome");
+    setClientes(data || []);
+  };
+
+  const handleSelectCliente = (nome: string) => {
+    const c = clientes.find(x => x.nome === nome);
+    if (c) {
+      setForm(f => ({ ...f, nome_cliente: c.nome, telefone_cliente: c.telefone || "" }));
+    } else {
+      setForm(f => ({ ...f, nome_cliente: nome }));
+    }
   };
 
   const produtoSelecionado = produtos.find(p => p.id === form.produto_id);
@@ -106,15 +145,36 @@ export default function Vendas() {
         estoque_atual: produtoSelecionado.estoque_atual - form.quantidade,
       }).eq("id", form.produto_id);
 
-      // Create parcelas if parcelado OR prazo (single parcel for prazo)
+      // --- CLIENT AUTOMATION ---
+      if (form.nome_cliente) {
+        const { data: existingClient } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("nome", form.nome_cliente)
+          .maybeSingle();
+
+        const clientData = {
+          user_id: user.id,
+          nome: form.nome_cliente,
+          telefone: form.telefone_cliente || null,
+          ultimo_produto_id: form.produto_id,
+          ultima_compra: new Date().toISOString(),
+        };
+
+        if (existingClient) {
+          await supabase.from("clientes").update(clientData).eq("id", existingClient.id);
+        } else {
+          await supabase.from("clientes").insert(clientData);
+        }
+      }
+
+      // Create parcelas
       if (isParcelado && form.numero_parcelas > 1) {
-        const parcelas = Array.from({ length: form.numero_parcelas }, (_, i) => {
-          const vencimento = new Date();
-          vencimento.setMonth(vencimento.getMonth() + i + 1);
+        const parcelas = datasParcelas.map((dataVenc, i) => {
           return {
             user_id: user.id, venda_id: venda.id, numero_parcela: i + 1,
             valor_parcela: valorParcela,
-            data_vencimento: vencimento.toISOString().split("T")[0],
+            data_vencimento: dataVenc,
             status: "pendente" as const,
           };
         });
@@ -131,10 +191,10 @@ export default function Vendas() {
       }
 
       // Create devedor for parcelado or prazo
-      if (geraDevedor && form.nome_devedor) {
+      if (geraDevedor && form.nome_cliente) {
         const valorDevido = isPrazo ? valorBruto : valorComJuros;
         const { error: devError } = await supabase.from("devedores").insert({
-          user_id: user.id, nome: form.nome_devedor, telefone: form.telefone_devedor || null,
+          user_id: user.id, nome: form.nome_cliente, telefone: form.telefone_cliente || null,
           venda_id: venda.id, valor_total_devido: valorDevido,
           valor_pago: 0, saldo_devedor: valorDevido, status: "em_dia",
         });
@@ -149,14 +209,20 @@ export default function Vendas() {
           valor_bruto: valorBruto,
           valor_total: valorComJuros,
           parcelas: form.numero_parcelas,
-          cliente: form.nome_devedor || null,
+          cliente: form.nome_cliente || null,
           vencimento: form.data_vencimento_pagamento || null,
         },
       });
 
       toast.success("Venda registrada com sucesso!");
-      setForm({ produto_id: "", quantidade: 1, metodo_pagamento: "dinheiro", tipo_cartao: "", numero_parcelas: 1, possui_juros: false, taxa_juros_mensal: 0, nome_devedor: "", telefone_devedor: "", data_vencimento_pagamento: "", desconto: 0 });
+      setForm({ 
+        produto_id: "", quantidade: 1, metodo_pagamento: "dinheiro", 
+        tipo_cartao: "", numero_parcelas: 1, possui_juros: false, 
+        taxa_juros_mensal: 0, nome_cliente: "", telefone_cliente: "", 
+        data_vencimento_pagamento: "", desconto: 0, usar_datas_customizadas: false 
+      });
       loadProdutos();
+      loadClientes();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -206,6 +272,31 @@ export default function Vendas() {
               </div>
             )}
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border/50 pb-4">
+              <div className="space-y-2">
+                <Label>Nome do Cliente</Label>
+                <div className="relative">
+                  <Input 
+                    value={form.nome_cliente} 
+                    onChange={(e) => handleSelectCliente(e.target.value)} 
+                    placeholder="Nome ou selecione..." 
+                    list="lista-clientes"
+                  />
+                  <datalist id="lista-clientes">
+                    {clientes.map(c => <option key={c.id} value={c.nome} />)}
+                  </datalist>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone / WhatsApp</Label>
+                <Input 
+                  value={form.telefone_cliente} 
+                  onChange={(e) => setForm({ ...form, telefone_cliente: e.target.value })} 
+                  placeholder="(00) 00000-0000" 
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Quantidade</Label>
@@ -243,22 +334,10 @@ export default function Vendas() {
             )}
 
             {isPrazo && (
-              <>
-                <div className="space-y-2">
-                  <Label>Data de Vencimento do Pagamento *</Label>
-                  <Input type="date" value={form.data_vencimento_pagamento} onChange={(e) => setForm({ ...form, data_vencimento_pagamento: e.target.value })} required />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nome do Cliente</Label>
-                    <Input value={form.nome_devedor} onChange={(e) => setForm({ ...form, nome_devedor: e.target.value })} placeholder="Nome do cliente" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Telefone</Label>
-                    <Input value={form.telefone_devedor} onChange={(e) => setForm({ ...form, telefone_devedor: e.target.value })} placeholder="(00) 00000-0000" />
-                  </div>
-                </div>
-              </>
+              <div className="space-y-2">
+                <Label>Data de Vencimento do Pagamento *</Label>
+                <Input type="date" value={form.data_vencimento_pagamento} onChange={(e) => setForm({ ...form, data_vencimento_pagamento: e.target.value })} required />
+              </div>
             )}
 
             {form.metodo_pagamento === "parcelado" && (
@@ -268,29 +347,49 @@ export default function Vendas() {
                     <Label>Nº de Parcelas</Label>
                     <Input type="number" min={2} max={24} value={form.numero_parcelas} onChange={(e) => setForm({ ...form, numero_parcelas: +e.target.value })} />
                   </div>
-                  <div className="space-y-2 flex items-end gap-3">
+                  <div className="space-y-2 flex flex-col justify-end gap-3">
                     <div className="flex items-center gap-2">
                       <Switch checked={form.possui_juros} onCheckedChange={(c) => setForm({ ...form, possui_juros: c })} />
                       <Label>Com Juros</Label>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={form.usar_datas_customizadas} onCheckedChange={(c) => setForm({ ...form, usar_datas_customizadas: c })} />
+                      <Label>Datas Personalizadas</Label>
+                    </div>
                   </div>
                 </div>
+                
                 {form.possui_juros && (
                   <div className="space-y-2">
                     <Label>Taxa de Juros Mensal (%)</Label>
                     <Input type="number" step="0.1" value={form.taxa_juros_mensal} onChange={(e) => setForm({ ...form, taxa_juros_mensal: +e.target.value })} />
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nome do Devedor</Label>
-                    <Input value={form.nome_devedor} onChange={(e) => setForm({ ...form, nome_devedor: e.target.value })} placeholder="Nome do cliente" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Telefone</Label>
-                    <Input value={form.telefone_devedor} onChange={(e) => setForm({ ...form, telefone_devedor: e.target.value })} placeholder="(00) 00000-0000" />
-                  </div>
-                </div>
+
+                {form.usar_datas_customizadas && (
+                  <Card className="bg-muted/30 border-primary/20">
+                    <CardHeader className="py-3 px-4">
+                      <CardTitle className="text-xs uppercase tracking-wider">Datas das Parcelas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4 grid grid-cols-2 gap-3">
+                      {datasParcelas.map((data, i) => (
+                        <div key={i} className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Parcela {i + 1}</Label>
+                          <Input 
+                            type="date" 
+                            className="h-8 text-xs"
+                            value={data} 
+                            onChange={(e) => {
+                              const novas = [...datasParcelas];
+                              novas[i] = e.target.value;
+                              setDatasParcelas(novas);
+                            }} 
+                          />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
 

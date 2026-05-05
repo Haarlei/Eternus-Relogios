@@ -338,6 +338,68 @@ export type Database = {
           },
         ]
       }
+      clientes: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          telefone: string | null
+          ultimo_produto_id: string | null
+          ultima_compra: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          telefone?: string | null
+          ultimo_produto_id?: string | null
+          ultima_compra?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          telefone?: string | null
+          ultimo_produto_id?: string | null
+          ultima_compra?: string | null
+          criado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_ultimo_produto_id_fkey"
+            columns: ["ultimo_produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      configuracoes: {
+        Row: {
+          id: string
+          user_id: string
+          chave: string
+          valor: string
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          chave: string
+          valor: string
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          chave?: string
+          valor?: string
+          criado_em?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

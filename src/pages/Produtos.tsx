@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, Package, Pencil, Trash2, Eye, EyeOff, X, ImagePlus, Crown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { logAtividade } from "@/lib/logger";
 import type { Tables } from "@/integrations/supabase/types";
 type Produto = Tables<"produtos">;
@@ -23,6 +24,7 @@ const defaultSpecs = {
   forma_caixa: "",
   diametro_visor: "",
   possui_calendario: "Não",
+  exibir_na_loja: "Sim",
   peso: "",
   tipo_movimento: "",
   material_caixa: "",
@@ -41,7 +43,7 @@ export default function Produtos() {
     preco_fornecedor: 0, margem: 0, taxa_debito: 0, taxa_credito: 0, taxa_credito_2x: 0,
     estoque_inicial: 0, estoque_atual: 0,
   });
-  
+
   const [specs, setSpecs] = useState(defaultSpecs);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingGallery, setExistingGallery] = useState<string[]>([]);
@@ -85,8 +87,8 @@ export default function Produtos() {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       const totalImages = imageFiles.length + existingGallery.length + (existingMainImage ? 1 : 0);
-      if (totalImages + files.length > 5) {
-        toast.error("Você pode ter no máximo 5 imagens por produto.");
+      if (totalImages + files.length > 7) {
+        toast.error("Você pode ter no máximo 7 imagens por produto.");
         return;
       }
       setImageFiles(prev => [...prev, ...files]);
@@ -259,270 +261,279 @@ export default function Produtos() {
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" />Novo Produto</Button>
             </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar Produto" : "Novo Produto"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Tabs defaultValue="basico" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="basico">Informações Básicas</TabsTrigger>
-                  <TabsTrigger value="especificacoes">Fotos e Especificações</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="basico" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Nome do Produto</Label>
-                      <Input value={form.nome_produto} onChange={(e) => setForm({ ...form, nome_produto: e.target.value })} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Gênero</Label>
-                      <Select value={form.genero} onValueChange={(v) => setForm({ ...form, genero: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="masculino">Masculino</SelectItem>
-                          <SelectItem value="feminino">Feminino</SelectItem>
-                          <SelectItem value="unisex">Unisex</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                      <Label>Descrição</Label>
-                      <Input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Preço Fornecedor (R$)</Label>
-                      <Input type="number" step="0.01" value={form.preco_fornecedor} onChange={(e) => setForm({ ...form, preco_fornecedor: +e.target.value })} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Margem (%)</Label>
-                      <Input type="number" step="0.1" value={form.margem} onChange={(e) => setForm({ ...form, margem: +e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Taxa Débito (%)</Label>
-                      <Input type="number" step="0.1" value={form.taxa_debito} onChange={(e) => setForm({ ...form, taxa_debito: +e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Taxa Crédito (%)</Label>
-                      <Input type="number" step="0.1" value={form.taxa_credito} onChange={(e) => setForm({ ...form, taxa_credito: +e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Taxa Crédito 2x (%)</Label>
-                      <Input type="number" step="0.1" value={form.taxa_credito_2x} onChange={(e) => setForm({ ...form, taxa_credito_2x: +e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Estoque Inicial</Label>
-                      <Input type="number" value={form.estoque_inicial} onChange={(e) => setForm({ ...form, estoque_inicial: +e.target.value, estoque_atual: editing ? form.estoque_atual : +e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Estoque Atual</Label>
-                      <Input type="number" value={form.estoque_atual} onChange={(e) => setForm({ ...form, estoque_atual: +e.target.value })} />
-                    </div>
-                  </div>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar Produto" : "Novo Produto"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Tabs defaultValue="basico" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="basico">Informações Básicas</TabsTrigger>
+                    <TabsTrigger value="especificacoes">Fotos e Especificações</TabsTrigger>
+                  </TabsList>
 
-                  <Card className="bg-muted/50">
-                    <CardContent className="pt-4">
-                      <p className="text-sm font-medium mb-2 text-foreground">Preços Calculados</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                        <div><span className="text-muted-foreground">Com Margem:</span><br/><strong>{formatCurrency(precoMargem)}</strong></div>
-                        <div><span className="text-muted-foreground">Débito:</span><br/><strong>{formatCurrency(precoMargem * (1 + form.taxa_debito / 100))}</strong></div>
-                        <div><span className="text-muted-foreground">Crédito:</span><br/><strong>{formatCurrency(precoMargem * (1 + form.taxa_credito / 100))}</strong></div>
-                        <div><span className="text-muted-foreground">Crédito 2x:</span><br/><strong>{formatCurrency(precoMargem * (1 + form.taxa_credito_2x / 100))}</strong></div>
+                  <TabsContent value="basico" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nome do Produto</Label>
+                        <Input value={form.nome_produto} onChange={(e) => setForm({ ...form, nome_produto: e.target.value })} required />
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="especificacoes" className="space-y-4 mt-4">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><ImagePlus className="w-4 h-4" /> Galeria de Imagens (Até 5)</Label>
-                      <div className="flex items-center gap-2">
-                        <Input type="file" accept="image/*" multiple onChange={handleImageChange} className="cursor-pointer" />
+                      <div className="space-y-2">
+                        <Label>Gênero</Label>
+                        <Select value={form.genero} onValueChange={(v) => setForm({ ...form, genero: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="masculino">Masculino</SelectItem>
+                            <SelectItem value="feminino">Feminino</SelectItem>
+                            <SelectItem value="unisex">Unisex</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      
-                      {/* Galeria interativa — hover mostra coroa e X */}
-                      <div className="flex flex-wrap gap-3 mt-3">
+                      <div className="md:col-span-2 space-y-2">
+                        <Label>Descrição</Label>
+                        <Input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preço Fornecedor (R$)</Label>
+                        <Input type="number" step="0.01" value={form.preco_fornecedor} onChange={(e) => setForm({ ...form, preco_fornecedor: +e.target.value })} required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Margem (%)</Label>
+                        <Input type="number" step="0.1" value={form.margem} onChange={(e) => setForm({ ...form, margem: +e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Taxa Débito (%)</Label>
+                        <Input type="number" step="0.1" value={form.taxa_debito} onChange={(e) => setForm({ ...form, taxa_debito: +e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Taxa Crédito (%)</Label>
+                        <Input type="number" step="0.1" value={form.taxa_credito} onChange={(e) => setForm({ ...form, taxa_credito: +e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Taxa Crédito 2x (%)</Label>
+                        <Input type="number" step="0.1" value={form.taxa_credito_2x} onChange={(e) => setForm({ ...form, taxa_credito_2x: +e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Estoque Inicial</Label>
+                        <Input type="number" value={form.estoque_inicial} onChange={(e) => setForm({ ...form, estoque_inicial: +e.target.value, estoque_atual: editing ? form.estoque_atual : +e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Estoque Atual</Label>
+                        <Input type="number" value={form.estoque_atual} onChange={(e) => setForm({ ...form, estoque_atual: +e.target.value })} />
+                      </div>
+                      <div className="md:col-span-2 flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-semibold">Exibir na Loja</Label>
+                          <p className="text-[11px] text-muted-foreground">O produto aparecerá na coleção pública para os clientes.</p>
+                        </div>
+                        <Switch
+                          checked={specs.exibir_na_loja === "Sim"}
+                          onCheckedChange={(checked) => setSpecs({ ...specs, exibir_na_loja: checked ? "Sim" : "Não" })}
+                        />
+                      </div>
+                    </div>
 
-                        {/* ── Foto Principal Existente ── */}
-                        {existingMainImage && (
-                          <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-primary group shadow-md flex-shrink-0">
-                            <img src={existingMainImage} alt="Principal" className="w-full h-full object-cover" />
-                            {/* Overlay hover */}
-                            <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => removeExistingImage(existingMainImage)}
-                                title="Remover foto"
-                                className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                            {/* Badge principal */}
-                            <div className="absolute top-1 left-1 bg-primary rounded-full p-0.5 shadow">
-                              <Crown className="w-3 h-3 text-white" />
-                            </div>
-                            <span className="absolute bottom-0 left-0 right-0 bg-primary/85 text-[9px] text-white text-center py-0.5 font-semibold tracking-wide">PRINCIPAL</span>
-                          </div>
-                        )}
+                    <Card className="bg-muted/50">
+                      <CardContent className="pt-4">
+                        <p className="text-sm font-medium mb-2 text-foreground">Preços Calculados</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div><span className="text-muted-foreground">Com Margem:</span><br /><strong>{formatCurrency(precoMargem)}</strong></div>
+                          <div><span className="text-muted-foreground">Débito:</span><br /><strong>{formatCurrency(precoMargem * (1 + form.taxa_debito / 100))}</strong></div>
+                          <div><span className="text-muted-foreground">Crédito:</span><br /><strong>{formatCurrency(precoMargem * (1 + form.taxa_credito / 100))}</strong></div>
+                          <div><span className="text-muted-foreground">Crédito 2x:</span><br /><strong>{formatCurrency(precoMargem * (1 + form.taxa_credito_2x / 100))}</strong></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                        {/* ── Galeria Existente ── */}
-                        {existingGallery.map((url, i) => (
-                          <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-border group shadow-sm flex-shrink-0 hover:border-border/80 transition-colors">
-                            <img src={url} alt={`Galeria ${i + 1}`} className="w-full h-full object-cover" />
-                            {/* Overlay hover */}
-                            <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => promoteExistingToMain(url)}
-                                title="Definir como foto principal"
-                                className="w-8 h-8 rounded-full bg-yellow-500/90 hover:bg-yellow-400 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
-                              >
-                                <Crown className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeExistingImage(url)}
-                                title="Remover foto"
-                                className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                  <TabsContent value="especificacoes" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><ImagePlus className="w-4 h-4" /> Galeria de Imagens (Até 5)</Label>
+                        <div className="flex items-center gap-2">
+                          <Input type="file" accept="image/*" multiple onChange={handleImageChange} className="cursor-pointer" />
+                        </div>
 
-                        {/* ── Novas Imagens (ainda não salvas) ── */}
-                        {imageFiles.map((file, i) => {
-                          const isChosenMain = newMainImageIndex === i;
-                          return (
-                            <div
-                              key={`new-${i}`}
-                              className={`relative w-24 h-24 rounded-xl overflow-hidden border-2 group shadow-sm flex-shrink-0 transition-colors ${
-                                isChosenMain ? "border-yellow-400 shadow-yellow-200" : "border-blue-400/60"
-                              }`}
-                            >
-                              <img src={URL.createObjectURL(file)} alt={`Nova ${i + 1}`} className="w-full h-full object-cover" />
+                        {/* Galeria interativa — hover mostra coroa e X */}
+                        <div className="flex flex-wrap gap-3 mt-3">
+
+                          {/* ── Foto Principal Existente ── */}
+                          {existingMainImage && (
+                            <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-primary group shadow-md flex-shrink-0">
+                              <img src={existingMainImage} alt="Principal" className="w-full h-full object-cover" />
                               {/* Overlay hover */}
                               <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-                                {!isChosenMain && (
-                                  <button
-                                    type="button"
-                                    onClick={() => promoteNewToMain(i)}
-                                    title="Definir como foto principal"
-                                    className="w-8 h-8 rounded-full bg-yellow-500/90 hover:bg-yellow-400 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
-                                  >
-                                    <Crown className="w-4 h-4" />
-                                  </button>
-                                )}
                                 <button
                                   type="button"
-                                  onClick={() => removeNewImage(i)}
+                                  onClick={() => removeExistingImage(existingMainImage)}
                                   title="Remover foto"
                                   className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
                               </div>
-                              {/* Badges */}
-                              {isChosenMain ? (
-                                <>
-                                  <div className="absolute top-1 left-1 bg-yellow-400 rounded-full p-0.5 shadow">
-                                    <Crown className="w-3 h-3 text-white" />
-                                  </div>
-                                  <span className="absolute bottom-0 left-0 right-0 bg-yellow-500/90 text-[9px] text-white text-center py-0.5 font-semibold tracking-wide">PRINCIPAL</span>
-                                </>
-                              ) : (
-                                <span className="absolute top-1 right-1 bg-blue-500/85 text-[8px] text-white px-1.5 py-0.5 rounded-full font-medium">NOVO</span>
-                              )}
+                              {/* Badge principal */}
+                              <div className="absolute top-1 left-1 bg-primary rounded-full p-0.5 shadow">
+                                <Crown className="w-3 h-3 text-white" />
+                              </div>
+                              <span className="absolute bottom-0 left-0 right-0 bg-primary/85 text-[9px] text-white text-center py-0.5 font-semibold tracking-wide">PRINCIPAL</span>
                             </div>
-                          );
-                        })}
+                          )}
 
-                        {/* Dica quando há imagens */}
-                        {(existingMainImage || existingGallery.length > 0 || imageFiles.length > 0) && (
-                          <p className="w-full text-xs text-muted-foreground mt-1">
-                            Passe o mouse sobre a foto para ver as opções — <Crown className="w-3 h-3 inline text-yellow-500" /> define como principal · <X className="w-3 h-3 inline text-red-400" /> remove
-                          </p>
-                        )}
+                          {/* ── Galeria Existente ── */}
+                          {existingGallery.map((url, i) => (
+                            <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-border group shadow-sm flex-shrink-0 hover:border-border/80 transition-colors">
+                              <img src={url} alt={`Galeria ${i + 1}`} className="w-full h-full object-cover" />
+                              {/* Overlay hover */}
+                              <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => promoteExistingToMain(url)}
+                                  title="Definir como foto principal"
+                                  className="w-8 h-8 rounded-full bg-yellow-500/90 hover:bg-yellow-400 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                                >
+                                  <Crown className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeExistingImage(url)}
+                                  title="Remover foto"
+                                  className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* ── Novas Imagens (ainda não salvas) ── */}
+                          {imageFiles.map((file, i) => {
+                            const isChosenMain = newMainImageIndex === i;
+                            return (
+                              <div
+                                key={`new-${i}`}
+                                className={`relative w-24 h-24 rounded-xl overflow-hidden border-2 group shadow-sm flex-shrink-0 transition-colors ${isChosenMain ? "border-yellow-400 shadow-yellow-200" : "border-blue-400/60"
+                                  }`}
+                              >
+                                <img src={URL.createObjectURL(file)} alt={`Nova ${i + 1}`} className="w-full h-full object-cover" />
+                                {/* Overlay hover */}
+                                <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                                  {!isChosenMain && (
+                                    <button
+                                      type="button"
+                                      onClick={() => promoteNewToMain(i)}
+                                      title="Definir como foto principal"
+                                      className="w-8 h-8 rounded-full bg-yellow-500/90 hover:bg-yellow-400 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                                    >
+                                      <Crown className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeNewImage(i)}
+                                    title="Remover foto"
+                                    className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 flex items-center justify-center text-white transition-transform hover:scale-110 shadow-lg"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                {/* Badges */}
+                                {isChosenMain ? (
+                                  <>
+                                    <div className="absolute top-1 left-1 bg-yellow-400 rounded-full p-0.5 shadow">
+                                      <Crown className="w-3 h-3 text-white" />
+                                    </div>
+                                    <span className="absolute bottom-0 left-0 right-0 bg-yellow-500/90 text-[9px] text-white text-center py-0.5 font-semibold tracking-wide">PRINCIPAL</span>
+                                  </>
+                                ) : (
+                                  <span className="absolute top-1 right-1 bg-blue-500/85 text-[8px] text-white px-1.5 py-0.5 rounded-full font-medium">NOVO</span>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Dica quando há imagens */}
+                          {(existingMainImage || existingGallery.length > 0 || imageFiles.length > 0) && (
+                            <p className="w-full text-xs text-muted-foreground mt-1">
+                              Passe o mouse sobre a foto para ver as opções — <Crown className="w-3 h-3 inline text-yellow-500" /> define como principal · <X className="w-3 h-3 inline text-red-400" /> remove
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="border-t border-border/50 pt-4 mt-2">
-                      <Label className="text-lg font-semibold mb-3 block">Especificações Técnicas</Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Marca</Label>
-                          <Input value={specs.marca} onChange={e => setSpecs({...specs, marca: e.target.value})} placeholder="Ex: Rolex, Casio" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Material da Correia</Label>
-                          <Input value={specs.material_correia} onChange={e => setSpecs({...specs, material_correia: e.target.value})} placeholder="Ex: Couro, Aço" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Tipo de Fecho</Label>
-                          <Input value={specs.tipo_fecho} onChange={e => setSpecs({...specs, tipo_fecho: e.target.value})} placeholder="Ex: Fivela, Borboleta" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Tipo de Movimento</Label>
-                          <Input value={specs.tipo_movimento} onChange={e => setSpecs({...specs, tipo_movimento: e.target.value})} placeholder="Ex: Quartzo, Automático" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Tipo de Bateria</Label>
-                          <Input value={specs.tipo_bateria} onChange={e => setSpecs({...specs, tipo_bateria: e.target.value})} placeholder="Ex: Íon de lítio" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Materiais da Caixa</Label>
-                          <Input value={specs.material_caixa} onChange={e => setSpecs({...specs, material_caixa: e.target.value})} placeholder="Ex: Aço Inoxidável" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Forma da Caixa</Label>
-                          <Input value={specs.forma_caixa} onChange={e => setSpecs({...specs, forma_caixa: e.target.value})} placeholder="Ex: Redonda, Quadrada" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Diâmetro do Visor</Label>
-                          <Input value={specs.diametro_visor} onChange={e => setSpecs({...specs, diametro_visor: e.target.value})} placeholder="Ex: 40mm" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Peso</Label>
-                          <Input value={specs.peso} onChange={e => setSpecs({...specs, peso: e.target.value})} placeholder="Ex: 120g" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="border-t border-border/50 pt-4 mt-2">
+                        <Label className="text-lg font-semibold mb-3 block">Especificações Técnicas</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label>Com calendário?</Label>
-                            <Select value={specs.possui_calendario} onValueChange={(v) => setSpecs({ ...specs, possui_calendario: v })}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Sim">Sim</SelectItem>
-                                <SelectItem value="Não">Não</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Label>Marca</Label>
+                            <Input value={specs.marca} onChange={e => setSpecs({ ...specs, marca: e.target.value })} placeholder="Ex: Rolex, Casio" />
                           </div>
                           <div className="space-y-2">
-                            <Label>Resistente à água?</Label>
-                            <Select value={specs.resistente_agua} onValueChange={(v) => setSpecs({ ...specs, resistente_agua: v })}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Sim">Sim</SelectItem>
-                                <SelectItem value="Não">Não</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Label>Material da Correia</Label>
+                            <Input value={specs.material_correia} onChange={e => setSpecs({ ...specs, material_correia: e.target.value })} placeholder="Ex: Couro, Aço" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tipo de Fecho</Label>
+                            <Input value={specs.tipo_fecho} onChange={e => setSpecs({ ...specs, tipo_fecho: e.target.value })} placeholder="Ex: Fivela, Borboleta" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tipo de Movimento</Label>
+                            <Input value={specs.tipo_movimento} onChange={e => setSpecs({ ...specs, tipo_movimento: e.target.value })} placeholder="Ex: Quartzo, Automático" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tipo de Bateria</Label>
+                            <Input value={specs.tipo_bateria} onChange={e => setSpecs({ ...specs, tipo_bateria: e.target.value })} placeholder="Ex: Íon de lítio" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Materiais da Caixa</Label>
+                            <Input value={specs.material_caixa} onChange={e => setSpecs({ ...specs, material_caixa: e.target.value })} placeholder="Ex: Aço Inoxidável" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Forma da Caixa</Label>
+                            <Input value={specs.forma_caixa} onChange={e => setSpecs({ ...specs, forma_caixa: e.target.value })} placeholder="Ex: Redonda, Quadrada" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Diâmetro do Visor</Label>
+                            <Input value={specs.diametro_visor} onChange={e => setSpecs({ ...specs, diametro_visor: e.target.value })} placeholder="Ex: 40mm" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Peso</Label>
+                            <Input value={specs.peso} onChange={e => setSpecs({ ...specs, peso: e.target.value })} placeholder="Ex: 120g" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Com calendário?</Label>
+                              <Select value={specs.possui_calendario} onValueChange={(v) => setSpecs({ ...specs, possui_calendario: v })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Sim">Sim</SelectItem>
+                                  <SelectItem value="Não">Não</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Resistente à água?</Label>
+                              <Select value={specs.resistente_agua} onValueChange={(v) => setSpecs({ ...specs, resistente_agua: v })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Sim">Sim</SelectItem>
+                                  <SelectItem value="Não">Não</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
+                  </TabsContent>
+                </Tabs>
 
-              <Button type="submit" className="w-full mt-6" disabled={loading}>
-                {loading ? "Salvando..." : editing ? "Atualizar Produto" : "Cadastrar Produto"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <Button type="submit" className="w-full mt-6" disabled={loading}>
+                  {loading ? "Salvando..." : editing ? "Atualizar Produto" : "Cadastrar Produto"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

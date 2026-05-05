@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, Watch, Menu, X, History, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, Watch, Menu, X, History, MessageCircle, UserSearch, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -12,8 +12,10 @@ const navItems = [
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/vendas", label: "Vendas", icon: ShoppingCart },
   { to: "/devedores", label: "Devedores", icon: Users },
+  { to: "/clientes", label: "Clientes", icon: UserSearch },
   { to: "/historico", label: "Histórico", icon: History },
   { to: "/dashboard/contato", label: "Contato Cliente", icon: MessageCircle, badge: true },
+  { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 function useContatosNaoLidos() {
