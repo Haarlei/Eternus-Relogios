@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Plus, Package, Pencil, Trash2, Eye, EyeOff, X, ImagePlus, Crown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { logAtividade } from "@/lib/logger";
+import { maskCurrency, unmaskCurrency } from "@/lib/masks";
 import type { Tables } from "@/integrations/supabase/types";
 type Produto = Tables<"produtos">;
 
@@ -295,7 +296,11 @@ export default function Produtos() {
                       </div>
                       <div className="space-y-2">
                         <Label>Preço Fornecedor (R$)</Label>
-                        <Input type="number" step="0.01" value={form.preco_fornecedor} onChange={(e) => setForm({ ...form, preco_fornecedor: +e.target.value })} required />
+                        <Input 
+                          value={maskCurrency(form.preco_fornecedor)} 
+                          onChange={(e) => setForm({ ...form, preco_fornecedor: unmaskCurrency(e.target.value) })} 
+                          required 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Margem (%)</Label>

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { UserSearch, Plus, Phone, MessageCircle, Trash2, Search, Watch } from "lucide-react";
+import { maskPhone, unmaskValue } from "@/lib/masks";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Cliente = Tables<"clientes"> & {
@@ -45,7 +46,7 @@ export default function Clientes() {
     const { error } = await supabase.from("clientes").insert({
       user_id: user.id,
       nome: form.nome,
-      telefone: form.telefone || null,
+      telefone: unmaskValue(form.telefone) || null,
     });
 
     if (error) {
@@ -105,8 +106,8 @@ export default function Clientes() {
                 <Label>Telefone / WhatsApp</Label>
                 <Input 
                   value={form.telefone} 
-                  onChange={e => setForm({...form, telefone: e.target.value})} 
-                  placeholder="Ex: 85999999999"
+                  onChange={e => setForm({...form, telefone: maskPhone(e.target.value)})} 
+                  placeholder="(00) 00000-0000"
                 />
               </div>
               <Button type="submit" className="w-full">Salvar Cliente</Button>
@@ -153,7 +154,7 @@ export default function Clientes() {
                           className="flex items-center gap-2 text-primary hover:underline font-medium"
                         >
                           <MessageCircle className="w-4 h-4" />
-                          {cliente.telefone}
+                          {maskPhone(cliente.telefone)}
                         </a>
                       ) : (
                         <span className="text-muted-foreground">---</span>

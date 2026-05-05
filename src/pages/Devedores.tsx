@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Users, Eye, CreditCard, Phone, Plus, Trash2, Pencil, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logAtividade } from "@/lib/logger";
+import { maskPhone, unmaskValue } from "@/lib/masks";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Devedor = Tables<"devedores">;
@@ -71,7 +72,7 @@ export default function Devedores() {
     const { data: novo, error } = await supabase.from("devedores").insert({
       user_id: user.id,
       nome: form.nome,
-      telefone: form.telefone || null,
+      telefone: unmaskValue(form.telefone) || null,
       venda_id: form.venda_id,
       valor_total_devido: form.valor_total_devido,
       valor_pago: form.valor_pago,
@@ -131,7 +132,7 @@ export default function Devedores() {
 
     const { error: errDev } = await supabase.from("devedores").update({
       nome: editForm.nome,
-      telefone: editForm.telefone || null,
+      telefone: unmaskValue(editForm.telefone) || null,
     }).eq("id", editDevedor.id);
     if (errDev) { toast.error(errDev.message); return; }
 
@@ -326,7 +327,7 @@ export default function Devedores() {
             {devedores.map(dev => (
               <tr key={dev.id} className={cn("border-b border-border/50 hover:bg-muted/50", dev.status === "atrasado" && "bg-destructive/5")}>
                 <td className="py-3 px-3 font-medium">{dev.nome}</td>
-                <td className="py-3 px-3">{dev.telefone || "-"}</td>
+                <td className="py-3 px-3">{maskPhone(dev.telefone) || "-"}</td>
                 <td className="py-3 px-3 text-right">{formatCurrency(dev.valor_total_devido)}</td>
                 <td className="py-3 px-3 text-right">{formatCurrency(dev.valor_pago)}</td>
                 <td className="py-3 px-3 text-right font-semibold">{formatCurrency(dev.saldo_devedor)}</td>
@@ -429,7 +430,7 @@ export default function Devedores() {
             </div>
             <div>
               <Label>Telefone</Label>
-              <Input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} placeholder="(11) 99999-9999" />
+              <Input value={form.telefone} onChange={e => setForm({ ...form, telefone: maskPhone(e.target.value) })} placeholder="(00) 00000-0000" />
             </div>
             <div>
               <Label>Venda *</Label>
@@ -479,7 +480,7 @@ export default function Devedores() {
             </div>
             <div>
               <Label>Telefone</Label>
-              <Input value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} placeholder="(11) 99999-9999" />
+              <Input value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: maskPhone(e.target.value) })} placeholder="(00) 00000-0000" />
             </div>
             <div>
               <Label>Número de Parcelas</Label>
