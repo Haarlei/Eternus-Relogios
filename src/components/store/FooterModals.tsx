@@ -260,7 +260,7 @@ export function FooterModal({ trigger, title, type }: FooterModalProps) {
                 O SITE É CONFIÁVEL?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                Somos uma empresa em fase inicial no ambiente digital, com atuação focada em transparência e consistência operacional desde o primeiro contato. Trabalhamos com fornecedores internacionais selecionados e adotamos critérios de qualidade, procedência e verificação antes de disponibilizar qualquer produto. não deixe de entrar em contato:{" "}
+                Sim! A Eternus Relógios é uma empresa que está iniciando sua presença digital com foco em atendimento próximo e transparente. Por isso, todo o nosso contato é feito diretamente pelo WhatsApp — você fala com a gente de verdade, sem robôs ou formulários que somem. Trabalhamos com produtos selecionados e só disponibilizamos no catálogo o que consideramos com procedência e qualidade. Qualquer dúvida antes de comprar, pode perguntar sem compromisso. não deixe de entrar em contato:{" "}
                 <strong>eternusrelogios@gmail.com</strong>
               </AccordionContent>
             </AccordionItem>
@@ -270,7 +270,7 @@ export function FooterModal({ trigger, title, type }: FooterModalProps) {
                 COMO É FEITO A COMPRA?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                O processo é simples: você escolhe o relógio desejado, adiciona ao carrinho, preenche suas informações de entrega e realiza o pagamento de forma segura através da plataforma. Trabalhamos com sistema integrado que过程a pedidos de modo claro, com rastreamento e atualizações sobre o status do envio.
+                É simples e sem complicação. Acesse a aba Coleção, escolha o relógio que te interessou e clique em "Pedir pelo WhatsApp" — você será redirecionado automaticamente para uma conversa com a gente, já com as informações do produto selecionado. A partir daí, combinamos juntos a melhor forma de entrega (podendo ser via Correios ou entrega própria, dependendo da sua região) e o pagamento é feito de forma segura por link gerado diretamente no WhatsApp. Após a confirmação, você recebe todas as informações do envio.
               </AccordionContent>
             </AccordionItem>
 
@@ -279,8 +279,7 @@ export function FooterModal({ trigger, title, type }: FooterModalProps) {
                 QUAL A GARANTIA DOS PRODUTOS?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                Todos os relógios comercializados possuem garantia de 1 ANO contra defeitos de fabricação, a partir da data de compra. Caso identifique qualquer defeito, entre em contato conosco pelo email: {" "}
-                <strong>eternusrelogios@gmail.com</strong>
+                Todos os relógios vendidos pela Eternus têm garantia de 1 ano contra defeitos de fabricação, contados a partir da data da compra. Se identificar qualquer problema, entre em contato pelo WhatsApp ou pelo e-mail:{" "} <strong>eternusrelogios@gmail.com</strong>
               </AccordionContent>
             </AccordionItem>
           </Accordion>

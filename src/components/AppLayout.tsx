@@ -1,21 +1,25 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, Watch, Menu, X, History, MessageCircle, UserSearch, Settings } from "lucide-react";
+import { Home, LayoutDashboard, Package, ShoppingCart, Users, LogOut, Watch, Menu, X, History, MessageCircle, UserSearch, Settings, Star, ClipboardList, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Início", icon: Home },
+  { to: "/dashboard/estatisticas", label: "Dashboard", icon: LayoutDashboard },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/vendas", label: "Vendas", icon: ShoppingCart },
+  { to: "/pedidos", label: "Pedidos do Site", icon: ClipboardList },
   { to: "/devedores", label: "Devedores", icon: Users },
   { to: "/clientes", label: "Clientes", icon: UserSearch },
+  { to: "/usuarios", label: "Usuários Registrados", icon: UserCheck },
   { to: "/historico", label: "Histórico", icon: History },
   { to: "/dashboard/contato", label: "Contato Cliente", icon: MessageCircle, badge: true },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
+  { to: "/avaliacoes", label: "Avaliações", icon: Star },
 ];
 
 function useContatosNaoLidos() {

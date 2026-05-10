@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldCheck, Truck, Star, ArrowRight, ChevronLeft, ChevronRight, Watch } from "lucide-react";
+import { ShieldCheck, Truck, Star, ArrowRight, ChevronLeft, ChevronRight, Watch, Quote } from "lucide-react";
 
 // Tipo local com apenas os campos públicos necessários para a vitrine
 type ProdutoPublico = {
@@ -22,6 +22,7 @@ type ProdutoPublico = {
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function StoreHome() {
   const [produtos, setProdutos] = useState<ProdutoPublico[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("todos");
 
@@ -35,6 +36,16 @@ export default function StoreHome() {
       if (!error && data) {
         setProdutos(data as ProdutoPublico[]);
       }
+
+      const { data: avData } = await supabase
+        .from("avaliacoes")
+        .select("*")
+        .order("criado_em", { ascending: false });
+      
+      if (avData) {
+        setAvaliacoes(avData);
+      }
+
       setLoading(false);
     }
     loadProdutos();
@@ -224,6 +235,47 @@ export default function StoreHome() {
           </div>
         </div>
       </section>
+
+      {/* ── Avaliações de Clientes ────────────────────────────────────── */}
+      {avaliacoes.length > 0 && (
+        <section className="py-24 bg-[#0a0a0a]">
+          <div className="container mx-auto px-6">
+            <div className="flex flex-col items-center text-center mb-16">
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary mb-4">Experiência</h2>
+              <h3 className="text-3xl md:text-4xl font-serif-elegant tracking-tight text-white">O Que Nossos Clientes Dizem</h3>
+            </div>
+            
+            <div className="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory hide-scrollbar">
+              {avaliacoes.map((av, i) => (
+                <div key={av.id} className="min-w-[320px] max-w-[320px] md:min-w-[400px] md:max-w-[400px] snap-center bg-card/10 backdrop-blur-sm border border-border/20 p-8 rounded-sm shadow-xl flex flex-col items-start gap-4 animate-reveal" style={{ animationDelay: `${i * 150}ms` }}>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex gap-1 text-primary">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`w-4 h-4 ${i < av.estrelas ? "fill-primary" : "text-primary/30"}`} />
+                      ))}
+                    </div>
+                    <Quote className="w-6 h-6 text-primary/40" />
+                  </div>
+                  
+                  <h4 className="text-white font-bold text-lg">{av.titulo}</h4>
+                  
+                  {av.mensagem && (
+                    <p className="text-muted-foreground text-sm leading-relaxed italic line-clamp-4">
+                      "{av.mensagem}"
+                    </p>
+                  )}
+                  
+                  {av.imagem_url && (
+                    <div className="w-full h-48 mt-4 rounded-sm overflow-hidden border border-border/30">
+                      <img src={av.imagem_url} alt="Avaliação" className="w-full h-full object-cover transition-transform hover:scale-105 duration-700" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Seção Trust ────────────────────────────────────────────────── */}
       <section className="py-40 container mx-auto px-6 border-t border-border/20">

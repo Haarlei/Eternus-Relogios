@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      avaliacoes: {
+        Row: {
+          criado_em: string
+          estrelas: number
+          id: string
+          imagem_url: string | null
+          mensagem: string | null
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string
+          estrelas?: number
+          id?: string
+          imagem_url?: string | null
+          mensagem?: string | null
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          criado_em?: string
+          estrelas?: number
+          id?: string
+          imagem_url?: string | null
+          mensagem?: string | null
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clientes: {
+        Row: {
+          criado_em: string
+          id: string
+          nome: string
+          telefone: string | null
+          ultima_compra: string | null
+          ultimo_produto_id: string | null
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string
+          id?: string
+          nome: string
+          telefone?: string | null
+          ultima_compra?: string | null
+          ultimo_produto_id?: string | null
+          user_id: string
+        }
+        Update: {
+          criado_em?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          ultima_compra?: string | null
+          ultimo_produto_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_ultimo_produto_id_fkey"
+            columns: ["ultimo_produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      configuracoes: {
+        Row: {
+          chave: string
+          criado_em: string
+          id: string
+          user_id: string
+          valor: string
+        }
+        Insert: {
+          chave: string
+          criado_em?: string
+          id?: string
+          user_id: string
+          valor: string
+        }
+        Update: {
+          chave?: string
+          criado_em?: string
+          id?: string
+          user_id?: string
+          valor?: string
+        }
+        Relationships: []
+      }
       contatos: {
         Row: {
           criado_em: string
@@ -204,6 +296,83 @@ export type Database = {
           },
         ]
       }
+      pedidos: {
+        Row: {
+          atualizado_em: string
+          checkout_url: string | null
+          criado_em: string
+          endereco_entrega: Json | null
+          id: string
+          itens: Json
+          metodo_pagamento: string
+          order_nsu: string | null
+          status: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          checkout_url?: string | null
+          criado_em?: string
+          endereco_entrega?: Json | null
+          id?: string
+          itens: Json
+          metodo_pagamento: string
+          order_nsu?: string | null
+          status?: string
+          total: number
+          user_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          checkout_url?: string | null
+          criado_em?: string
+          endereco_entrega?: Json | null
+          id?: string
+          itens?: Json
+          metodo_pagamento?: string
+          order_nsu?: string | null
+          status?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      perfis: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          endereco: Json | null
+          id: string
+          nome: string
+          telefone: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          endereco?: Json | null
+          id: string
+          nome: string
+          telefone?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          endereco?: Json | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           criado_em: string
@@ -337,68 +506,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      clientes: {
-        Row: {
-          id: string
-          user_id: string
-          nome: string
-          telefone: string | null
-          ultimo_produto_id: string | null
-          ultima_compra: string | null
-          criado_em: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          nome: string
-          telefone?: string | null
-          ultimo_produto_id?: string | null
-          ultima_compra?: string | null
-          criado_em?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          nome?: string
-          telefone?: string | null
-          ultimo_produto_id?: string | null
-          ultima_compra?: string | null
-          criado_em?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clientes_ultimo_produto_id_fkey"
-            columns: ["ultimo_produto_id"]
-            isOneToOne: false
-            referencedRelation: "produtos"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      configuracoes: {
-        Row: {
-          id: string
-          user_id: string
-          chave: string
-          valor: string
-          criado_em: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          chave: string
-          valor: string
-          criado_em?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          chave?: string
-          valor?: string
-          criado_em?: string
-        }
-        Relationships: []
       }
     }
     Views: {

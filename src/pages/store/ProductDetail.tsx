@@ -188,7 +188,7 @@ export default function ProductDetail() {
 
         {/* Detalhes */}
         <div className="lg:col-span-7 flex flex-col pt-4 w-full">
-          <div className="mb-10 border-b border-border/30 pb-10">
+          <div className="mb-8 border-b border-border/30 pb-8">
             <p className="text-[11px] font-bold text-primary uppercase tracking-[0.3em] mb-4">
               {produto.genero}
             </p>
@@ -201,15 +201,70 @@ export default function ProductDetail() {
 
             {/* Estoque */}
             {!esgotado && (
-              <div className="mt-8 inline-flex items-center gap-3 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider border border-emerald-500/10">
+              <div className="mt-6 inline-flex items-center gap-3 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider border border-emerald-500/10">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Disponível para Envio Imediato
               </div>
             )}
           </div>
 
-          {/* Abas de Informação */}
-          <Tabs defaultValue="descricao" className="w-full mb-12">
+          {/* ── Botões de Compra ──────────────────────────────── */}
+          <div className="flex flex-col gap-3 mb-10">
+            {/* Compra Online */}
+            <Button
+              size="lg"
+              className="w-full h-14 text-[11px] font-bold uppercase tracking-[0.2em] rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all duration-300"
+              disabled={esgotado}
+              onClick={() => {
+                addItem({
+                  id: produto.id,
+                  nome_produto: produto.nome_produto,
+                  preco,
+                  imagem_url: produto.imagem_url,
+                  quantidade: 1,
+                  estoque_disponivel: produto.estoque_atual,
+                });
+                navigate("/carrinho");
+              }}
+            >
+              <ShoppingCart className="w-4 h-4 mr-2.5" />
+              Comprar Agora (Pix ou Cartão)
+            </Button>
+
+            {/* Dois botões secundários lado a lado */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 text-[10px] font-bold uppercase tracking-[0.15em] rounded-2xl border-border hover:border-green-500 hover:text-green-600 hover:bg-green-500/5 transition-all duration-300"
+                disabled={esgotado}
+                onClick={buyDirectlyWhatsApp}
+              >
+                <MessageCircle className="w-4 h-4 mr-2 text-green-500" />
+                Via WhatsApp
+              </Button>
+
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 text-[10px] font-bold uppercase tracking-[0.15em] rounded-2xl border-border hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-300"
+                disabled={esgotado}
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Adicionar à Sacola
+              </Button>
+            </div>
+
+            {esgotado && (
+              <p className="text-center text-[11px] font-bold uppercase tracking-widest text-destructive">
+                Indisponível no momento
+              </p>
+            )}
+          </div>
+
+          {/* ── Abas de Informação ───────────────────────────── */}
+          <Tabs defaultValue="descricao" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-border/30 rounded-none h-12 p-0 gap-8">
               <TabsTrigger value="descricao" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 text-xs font-bold uppercase tracking-[0.2em]">Detalhes</TabsTrigger>
               <TabsTrigger value="especificacoes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 text-xs font-bold uppercase tracking-[0.2em]">Especificações</TabsTrigger>
@@ -220,7 +275,7 @@ export default function ProductDetail() {
                 <p className="whitespace-pre-wrap text-base leading-relaxed">{produto.descricao || "Relógio de alta qualidade e design sofisticado. Ideal para compor o seu visual com elegância e precisão."}</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-10">
                 <div className="flex items-center gap-4 group p-4 rounded-2xl bg-secondary/30 border border-border/50">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center transition-colors">
                     <ShieldCheck className="w-5 h-5 text-primary" />
@@ -262,35 +317,6 @@ export default function ProductDetail() {
               </div>
             </TabsContent>
           </Tabs>
-
-          <div className="flex flex-col sm:flex-row gap-4 mt-auto">
-            <Button
-              size="lg"
-              className="flex-1 h-16 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full bg-foreground text-background hover:bg-primary hover:text-white transition-all duration-500 shadow-xl"
-              disabled={esgotado}
-              onClick={buyDirectlyWhatsApp}
-            >
-              <MessageCircle className="w-5 h-5 mr-3" />
-              Solicitar (WhatsApp)
-            </Button>
-
-            <Button
-              size="lg"
-              variant="outline"
-              className="flex-1 h-16 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full border-border hover:border-primary hover:bg-transparent transition-all duration-500"
-              disabled={esgotado}
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart className="w-5 h-5 mr-3" />
-              Adicionar à Sacola
-            </Button>
-          </div>
-
-          {esgotado && (
-            <p className="text-center text-[11px] font-bold uppercase tracking-widest text-destructive mt-6">
-              Indisponível no momento
-            </p>
-          )}
         </div>
       </div>
 

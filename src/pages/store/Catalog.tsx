@@ -39,6 +39,10 @@ export default function Catalog() {
   )).sort() as string[];
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
     async function loadProdutos() {
       const { data, error } = await supabase
         .from("produtos")

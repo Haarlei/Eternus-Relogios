@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type Entidade = "produto" | "venda" | "parcela" | "devedor";
+export type Entidade = "produto" | "venda" | "parcela" | "devedor" | "avaliacao";
 export type Acao = "criacao" | "edicao" | "exclusao" | "pagamento";
 
 interface LogParams {

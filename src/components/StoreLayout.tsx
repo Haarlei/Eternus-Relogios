@@ -1,14 +1,16 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ShoppingBag, Watch, Facebook, Instagram, MessageCircle, Mail } from "lucide-react";
+import { ShoppingBag, Watch, Facebook, Instagram, MessageCircle, Mail, User, LogIn } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import logo from "../image/eternus.png"; // ajuste o caminho conforme sua estrutura
+import logo from "../image/eternus.png";
 import { FooterModal } from "./store/FooterModals";
 
 export default function StoreLayout({ children }: { children: ReactNode }) {
   const { totalItems } = useCart();
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
@@ -88,6 +90,16 @@ export default function StoreLayout({ children }: { children: ReactNode }) {
 
             <div className="flex items-center gap-2">
               <ThemeToggle />
+
+              {/* Botão Minha Conta */}
+              <button
+                onClick={() => navigate(user ? "/minha-conta" : "/entrar")}
+                className={`relative group p-2 transition-colors ${(isHome && !scrolled) ? "text-white hover:text-primary" : "text-foreground hover:text-primary"
+                  }`}
+                title={user ? `Olá, ${user.nome?.split(' ')[0]}` : "Entrar"}
+              >
+                {user ? <User className="w-5 h-5" strokeWidth={1.5} /> : <LogIn className="w-5 h-5" strokeWidth={1.5} />}
+              </button>
 
               {!isCartPage && (
                 <button
