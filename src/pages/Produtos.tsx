@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { logAtividade } from "@/lib/logger";
 import { maskCurrency, unmaskCurrency } from "@/lib/masks";
 import type { Tables } from "@/integrations/supabase/types";
-type Produto = Tables<"produtos">;
+type Produto = Tables<"produtos"> & { sku?: string | null };
 
 const defaultSpecs = {
   marca: "",
@@ -43,6 +43,7 @@ export default function Produtos() {
     nome_produto: "", descricao: "", genero: "unisex",
     preco_fornecedor: 0, margem: 0, taxa_debito: 0, taxa_credito: 0, taxa_credito_2x: 0,
     estoque_inicial: 0, estoque_atual: 0,
+    sku: ""
   });
 
   const [specs, setSpecs] = useState(defaultSpecs);
@@ -60,7 +61,7 @@ export default function Produtos() {
   };
 
   const resetForm = () => {
-    setForm({ nome_produto: "", descricao: "", genero: "unisex", preco_fornecedor: 0, margem: 0, taxa_debito: 0, taxa_credito: 0, taxa_credito_2x: 0, estoque_inicial: 0, estoque_atual: 0 });
+    setForm({ nome_produto: "", descricao: "", genero: "unisex", preco_fornecedor: 0, margem: 0, taxa_debito: 0, taxa_credito: 0, taxa_credito_2x: 0, estoque_inicial: 0, estoque_atual: 0, sku: "" });
     setSpecs(defaultSpecs);
     setImageFiles([]);
     setExistingGallery([]);
@@ -76,6 +77,7 @@ export default function Produtos() {
       preco_fornecedor: p.preco_fornecedor, margem: p.margem, taxa_debito: p.taxa_debito,
       taxa_credito: p.taxa_credito, taxa_credito_2x: p.taxa_credito_2x,
       estoque_inicial: p.estoque_inicial, estoque_atual: p.estoque_atual,
+      sku: p.sku || ""
     });
     setSpecs((p.especificacoes as any) || defaultSpecs);
     setExistingMainImage(p.imagem_url);
@@ -184,7 +186,7 @@ export default function Produtos() {
         // Atualiza dados do formulário
         const { error: formError } = await supabase
           .from("produtos")
-          .update(formPayload)
+          .update(formPayload as any)
           .eq("id", editing.id);
         if (formError) throw formError;
 
@@ -204,7 +206,7 @@ export default function Produtos() {
       } else {
         const { data: novo, error } = await supabase
           .from("produtos")
-          .insert({ ...formPayload, ...imagePayload })
+          .insert({ ...formPayload, ...imagePayload } as any)
           .select()
           .single();
         if (error) throw error;
@@ -278,6 +280,10 @@ export default function Produtos() {
                       <div className="space-y-2">
                         <Label>Nome do Produto</Label>
                         <Input value={form.nome_produto} onChange={(e) => setForm({ ...form, nome_produto: e.target.value })} required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>SKU (Yampi)</Label>
+                        <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Ex: 7YW2C9JNH" />
                       </div>
                       <div className="space-y-2">
                         <Label>Gênero</Label>

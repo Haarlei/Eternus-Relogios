@@ -12,14 +12,10 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Pega os dados enviados pelo Front-end
-    const { items, total_amount, metadata, redirect_url } = await req.json();
+    const { items, total_amount, order_id, customer, redirect_url } = await req.json();
 
     // InfiniteTag (handle) da sua conta
     const INFINITETAG = "haarley";
-    
-    // Identificador único do pedido (nsu) gerado no momento
-    const order_nsu = `ETERNUS-${Date.now()}`;
 
     // Monta o array de itens para a API
     const formattedItems = items.map((item: any) => ({
@@ -28,15 +24,43 @@ serve(async (req: Request) => {
       price: Math.round(item.preco * 100), // Preço unitário em centavos
     }));
 
-    // 1. Monta o corpo da requisição
-    const checkoutPayload = {
+    // Calcula o valor total em centavos para garantir consistência
+    const totalAmountCents = items.reduce((acc: number, item: any) => acc + (Math.round(item.preco * 100) * item.quantidade), 0);
+
+    // 1. Monta o corpo da requisição com redundância para garantir o preenchimento
+    const checkoutPayload: any = {
       handle: INFINITETAG,
+      amount: totalAmountCents, // Valor total em centavos na raiz
       items: formattedItems,
-      // URL onde você quer que o cliente caia depois do pagamento
-      redirect_url: redirect_url || "https://eternusrelogios.shop/sucesso", 
+      redirect_url: redirect_url || "https://eternusrelogios.shop/sucesso",
+      metadata: {
+        order_id: order_id || "",
+      },
+      // Tentativa de preenchimento usando múltiplos padrões da API
+      customer: customer ? {
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone?.replace(/\D/g, ""),
+        document: customer.cpf?.replace(/\D/g, ""), // Caso CPF seja fornecido
+      } : undefined,
+      // Alguns endpoints da InfinitePay preferem o objeto de endereço separado
+      shipping_address: customer?.address ? {
+        zip_code: customer.address.cep?.replace(/\D/g, ""),
+        street: customer.address.rua,
+        number: customer.address.numero,
+        complement: customer.address.complemento || "",
+        neighborhood: customer.address.bairro,
+        city: customer.address.cidade,
+        state: customer.address.estado,
+      } : undefined
     };
 
-    // 2. Faz a chamada para a API da InfinitePay (Endpoint sem autenticação, validado pelo handle)
+    // Adiciona o objeto de endereço também dentro do cliente para redundância
+    if (checkoutPayload.customer && checkoutPayload.shipping_address) {
+      checkoutPayload.customer.address = checkoutPayload.shipping_address;
+    }
+
+    // 3. Faz a chamada para a API da InfinitePay
     const response = await fetch("https://api.checkout.infinitepay.io/links", {
       method: "POST",
       headers: {

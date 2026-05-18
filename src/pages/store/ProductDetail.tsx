@@ -20,6 +20,7 @@ type Produto = {
   especificacoes: Record<string, unknown> | null;
   preco_com_margem: number;
   estoque_atual: number;
+  sku: string | null;
 };
 
 const WHATSAPP = "5585987939498";
@@ -38,11 +39,11 @@ export default function ProductDetail() {
       if (!id) return;
       setLoading(true);
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("produtos")
-        .select("id, nome_produto, descricao, genero, imagem_url, galeria_imagens, especificacoes, preco_com_margem, estoque_atual")
+        .select("id, nome_produto, descricao, genero, imagem_url, galeria_imagens, especificacoes, preco_com_margem, estoque_atual, sku")
         .eq("id", id)
-        .single();
+        .single() as any);
 
       if (!error && data) {
         setProduto(data as Produto);
@@ -58,12 +59,12 @@ export default function ProductDetail() {
 
     async function loadRelated(current: Produto) {
       // Busca produtos do mesmo gênero, excluindo o atual
-      const { data } = await supabase
+      const { data } = await (supabase
         .from("produtos")
-        .select("id, nome_produto, genero, imagem_url, preco_com_margem, estoque_atual, especificacoes")
+        .select("id, nome_produto, genero, imagem_url, preco_com_margem, estoque_atual, especificacoes, sku")
         .eq("genero", current.genero)
         .neq("id", current.id)
-        .limit(10);
+        .limit(10) as any);
 
       if (data) {
         // Filtra os que devem ser exibidos
@@ -132,6 +133,7 @@ export default function ProductDetail() {
       nome_produto: produto.nome_produto,
       preco: preco,
       imagem_url: produto.imagem_url,
+      sku: produto.sku || undefined,
       quantidade: 1,
       estoque_disponivel: produto.estoque_atual,
     });
@@ -221,6 +223,7 @@ export default function ProductDetail() {
                   nome_produto: produto.nome_produto,
                   preco,
                   imagem_url: produto.imagem_url,
+                  sku: produto.sku || undefined,
                   quantidade: 1,
                   estoque_disponivel: produto.estoque_atual,
                 });

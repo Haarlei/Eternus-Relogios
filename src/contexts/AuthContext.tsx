@@ -6,6 +6,7 @@ interface SafeUser {
   email: string | undefined;
   nome?: string;
   telefone?: string;
+  endereco?: any;
   is_admin?: boolean;
 }
 
@@ -15,7 +16,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, nome: string, telefone: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: { nome?: string; telefone?: string }) => Promise<void>;
+  updateProfile: (updates: { nome?: string; telefone?: string; endereco?: any }) => Promise<void>;
   verifyOtp: (email: string, token: string) => Promise<void>;
 }
 
@@ -38,12 +39,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await (supabase
         .from("perfis")
-        .select("nome, telefone, is_admin")
+        .select("nome, telefone, endereco, is_admin")
         .eq("id", userId)
         .maybeSingle() as any);
       
       if (!error && data) {
-        setUser({ id: userId, email, nome: data.nome, telefone: data.telefone, is_admin: data.is_admin });
+        setUser({ 
+          id: userId, 
+          email, 
+          nome: data.nome, 
+          telefone: data.telefone, 
+          endereco: data.endereco,
+          is_admin: data.is_admin 
+        });
       } else {
         setUser({ id: userId, email });
       }
@@ -93,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = async (updates: { nome?: string; telefone?: string }) => {
+  const updateProfile = async (updates: { nome?: string; telefone?: string; endereco?: any }) => {
     if (!user) return;
     const { error } = await supabase.from("perfis").update(updates).eq("id", user.id);
     if (error) throw error;

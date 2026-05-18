@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   User, Package, LogOut, ChevronRight, Clock, CheckCircle2,
-  Truck, Box, ShoppingBag, AlertCircle, CreditCard, MessageCircle, LayoutDashboard, Edit2, Phone, Mail
+  Truck, Box, ShoppingBag, AlertCircle, CreditCard, MessageCircle, LayoutDashboard, Edit2, Phone, Mail, Loader2
 } from "lucide-react";
 import {
   Dialog,
@@ -90,14 +90,66 @@ function OrderTimeline({ status }: { status: string }) {
 function EditProfileDialog({ user, onUpdate }: { user: any, onUpdate: (updates: any) => Promise<void> }) {
   const [nome, setNome] = useState(user?.nome || "");
   const [telefone, setTelefone] = useState(user?.telefone || "");
+  const [endereco, setEndereco] = useState(user?.endereco || {
+    rua: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+    cep: ""
+  });
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingCEP, setLoadingCEP] = useState(false);
+
+  // Trigger lookup automatically when CEP is 8 digits (sanitized)
+  useEffect(() => {
+    const cleanCEP = endereco.cep.replace(/\D/g, "");
+    if (cleanCEP.length === 8) {
+      handleLookupCEP(cleanCEP);
+    }
+  }, [endereco.cep]);
+
+  const handleLookupCEP = async (cepValue: string) => {
+    const cleanCEP = cepValue.replace(/\D/g, "");
+    if (cleanCEP.length !== 8) return;
+
+    setLoadingCEP(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+      const data = await response.json();
+      
+      if (data.erro) {
+        toast.error("CEP não encontrado.");
+        return;
+      }
+
+      setEndereco(prev => ({
+        ...prev,
+        cep: cleanCEP,
+        rua: data.logradouro,
+        bairro: data.bairro,
+        cidade: data.localidade,
+        estado: data.uf
+      }));
+      toast.success("Endereço preenchido automaticamente!");
+    } catch (err) {
+      toast.error("Erro ao buscar CEP.");
+    } finally {
+      setLoadingCEP(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await onUpdate({ nome, telefone: unmaskValue(telefone) });
+      await onUpdate({ 
+        nome, 
+        telefone: unmaskValue(telefone),
+        endereco 
+      });
       toast.success("Perfil atualizado!");
       setOpen(false);
     } catch (err) {
@@ -115,36 +167,112 @@ function EditProfileDialog({ user, onUpdate }: { user: any, onUpdate: (updates: 
           Editar Perfil
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif-elegant text-2xl">Editar Informações</DialogTitle>
           <DialogDescription>
             Mantenha seus dados sempre atualizados para facilitar suas compras.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Básico</h3>
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome Completo</Label>
+                <Input
+                  id="edit-name"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Seu nome"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">WhatsApp</Label>
+                <Input
+                  id="edit-phone"
+                  value={maskPhone(telefone)}
+                  onChange={(e) => setTelefone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Address Info */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Endereço</h3>
+              <div className="space-y-2">
+                <Label htmlFor="cep">CEP</Label>
+                <div className="relative">
+                  <Input
+                    id="cep"
+                    value={endereco.cep}
+                    onChange={(e) => setEndereco({ ...endereco, cep: e.target.value })}
+                    placeholder="00000-000"
+                    maxLength={10}
+                  />
+                  {loadingCEP && <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-primary" />}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rua">Rua</Label>
+                <Input
+                  id="rua"
+                  value={endereco.rua}
+                  onChange={(e) => setEndereco({...endereco, rua: e.target.value})}
+                  placeholder="Rua..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="numero">Número</Label>
+              <Input
+                id="numero"
+                value={endereco.numero}
+                onChange={(e) => setEndereco({...endereco, numero: e.target.value})}
+                placeholder="123"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bairro">Bairro</Label>
+              <Input
+                id="bairro"
+                value={endereco.bairro}
+                onChange={(e) => setEndereco({...endereco, bairro: e.target.value})}
+                placeholder="Centro"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cidade">Cidade</Label>
+              <Input id="cidade" value={endereco.cidade} disabled className="bg-muted/50" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estado">UF</Label>
+              <Input id="estado" value={endereco.estado} disabled className="bg-muted/50" />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="edit-name">Nome Completo</Label>
+            <Label htmlFor="complemento">Complemento</Label>
             <Input
-              id="edit-name"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Seu nome"
-              required
+              id="complemento"
+              value={endereco.complemento}
+              onChange={(e) => setEndereco({...endereco, complemento: e.target.value})}
+              placeholder="Apto, Bloco, etc."
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-phone">WhatsApp</Label>
-            <Input
-              id="edit-phone"
-              value={maskPhone(telefone)}
-              onChange={(e) => setTelefone(e.target.value)}
-              placeholder="(00) 00000-0000"
-              required
-            />
-          </div>
+
           <DialogFooter className="pt-4">
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl font-bold">
               {loading ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </DialogFooter>
@@ -316,8 +444,7 @@ export default function MinhaConta() {
                 <OrderTimeline status={pedido.status} />
 
                 {/* Botão Retomar Pagamento Online */}
-                {/* Botão Retomar Pagamento Online (InfinitePay) */}
-                {pedido.status === "Aguardando Pagamento" && pedido.metodo_pagamento === "Online (InfinitePay)" && pedido.checkout_url && (
+                {pedido.status === "Aguardando Pagamento" && pedido.metodo_pagamento !== "WhatsApp" && pedido.checkout_url && (
                   <div className="mt-4 pt-4 border-t border-border/50">
                     <a
                       href={pedido.checkout_url}
