@@ -16,19 +16,24 @@ export default function AdminHome() {
 
   useEffect(() => {
     async function loadStats() {
-      // Exemplo de busca de estatísticas básicas
-      const { data: vendas } = await supabase.from("vendas").select("valor_bruto");
-      const { count: pedidos } = await supabase.from("pedidos").select("*", { count: "exact", head: true }).eq("status", "Aguardando Pagamento");
-      const { count: clientes } = await supabase.from("perfis").select("*", { count: "exact", head: true });
-      const { data: produtos } = await supabase.from("produtos").select("estoque_atual");
+      const [vendasRes, pedidosRes, novosPedidosRes, clientesRes, produtosRes] = await Promise.all([
+        supabase.from("vendas").select("valor_bruto"),
+        supabase.from("pedidos").select("total").neq("status", "Aguardando Pagamento").neq("status", "Cancelado"),
+        supabase.from("pedidos").select("*", { count: "exact", head: true }).eq("status", "Aguardando Pagamento"),
+        supabase.from("perfis").select("*", { count: "exact", head: true }),
+        supabase.from("produtos").select("estoque_atual"),
+      ]);
 
-      const totalVendas = (vendas as any)?.reduce((acc: number, curr: any) => acc + (curr.valor_bruto || 0), 0) || 0;
-      const totalEstoque = (produtos as any)?.reduce((acc: number, curr: any) => acc + (curr.estoque_atual || 0), 0) || 0;
+      const totalVendasManual = vendasRes.data?.reduce((acc: number, curr: any) => acc + (curr.valor_bruto || 0), 0) || 0;
+      const totalVendasOnline = pedidosRes.data?.reduce((acc: number, curr: any) => acc + (curr.total || 0), 0) || 0;
+      const totalVendas = totalVendasManual + totalVendasOnline;
+
+      const totalEstoque = produtosRes.data?.reduce((acc: number, curr: any) => acc + (curr.estoque_atual || 0), 0) || 0;
 
       setStats({
         vendasMes: totalVendas,
-        pedidosNovos: pedidos || 0,
-        clientesTotal: clientes || 0,
+        pedidosNovos: novosPedidosRes.count || 0,
+        clientesTotal: clientesRes.count || 0,
         produtosEstoque: totalEstoque
       });
     }

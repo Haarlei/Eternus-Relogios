@@ -6,8 +6,10 @@ import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, Truck, MessageCircle, ShoppingCart, ArrowLeft, CheckCircle2, Watch } from "lucide-react";
+import { ShieldCheck, Truck, MessageCircle, ShoppingCart, ArrowLeft, CheckCircle2, Watch, Star, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 // Tipo local com apenas os campos públicos necessários para a página de detalhe
 type Produto = {
@@ -31,14 +33,38 @@ export default function ProductDetail() {
   const { addItem } = useCart();
   const [produto, setProduto] = useState<Produto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState<string | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Produto[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [apiMain, setApiMain] = useState<CarouselApi>();
+  const [apiModal, setApiModal] = useState<CarouselApi>();
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+
+  useEffect(() => {
+    if (!apiMain) return;
+    apiMain.on("select", () => setCurrentSlide(apiMain.selectedScrollSnap()));
+  }, [apiMain]);
+
+  useEffect(() => {
+    if (!apiModal) return;
+    apiModal.on("select", () => setCurrentSlide(apiModal.selectedScrollSnap()));
+  }, [apiModal]);
+
+  useEffect(() => {
+    if (apiMain && apiMain.selectedScrollSnap() !== currentSlide) {
+      apiMain.scrollTo(currentSlide);
+    }
+    if (apiModal && apiModal.selectedScrollSnap() !== currentSlide) {
+      apiModal.scrollTo(currentSlide);
+    }
+  }, [currentSlide, apiMain, apiModal]);
 
   useEffect(() => {
     async function loadProduto() {
       if (!id) return;
       setLoading(true);
-      
+
       const { data, error } = await (supabase
         .from("produtos")
         .select("id, nome_produto, descricao, genero, imagem_url, galeria_imagens, especificacoes, preco_com_margem, estoque_atual, sku")
@@ -47,8 +73,18 @@ export default function ProductDetail() {
 
       if (!error && data) {
         setProduto(data as Produto);
-        setActiveImage(data.imagem_url || (data.galeria_imagens && data.galeria_imagens.length > 0 ? data.galeria_imagens[0] : null));
-        
+
+        // Carregar avaliações do produto
+        const { data: avData } = await supabase
+          .from("avaliacoes")
+          .select("*")
+          .eq("produto_id", id)
+          .order("criado_em", { ascending: false });
+
+        if (avData) {
+          setAvaliacoes(avData);
+        }
+
         // Carregar produtos relacionados de forma "inteligente"
         loadRelated(data as Produto);
       } else {
@@ -76,7 +112,7 @@ export default function ProductDetail() {
           const diffB = Math.abs(b.preco_com_margem - current.preco_com_margem);
           return diffA - diffB;
         });
-        
+
         setRelatedProducts(sorted.slice(0, 4) as Produto[]);
       }
     }
@@ -140,6 +176,21 @@ export default function ProductDetail() {
     toast.success("Adicionado à sacola!");
   };
 
+  const handleAddToCartRelated = (e: React.MouseEvent, p: Produto) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem({
+      id: p.id,
+      nome_produto: p.nome_produto,
+      preco: p.preco_com_margem,
+      imagem_url: p.imagem_url,
+      sku: p.sku || undefined,
+      quantidade: 1,
+      estoque_disponivel: p.estoque_atual,
+    });
+    toast.success("Adicionado à sacola!");
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 lg:py-20 max-w-7xl font-sans-elegant">
       <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-all mb-12">
@@ -150,42 +201,101 @@ export default function ProductDetail() {
       <div className="flex flex-col lg:grid lg:grid-cols-12 gap-12 lg:gap-24 items-start mb-32">
         {/* Imagens */}
         <div className="lg:col-span-5 flex flex-col gap-6 w-full">
-          <div className="relative aspect-square bg-card rounded-[2.5rem] overflow-hidden premium-shadow border border-border/30 group">
-            {activeImage ? (
-              <img
-                src={activeImage}
-                alt={produto.nome_produto}
-                className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 ${esgotado ? "grayscale opacity-80" : ""}`}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                <Watch className="w-20 h-20 opacity-10" />
-              </div>
-            )}
-            {esgotado && (
-              <div className="absolute inset-0 bg-background/40 backdrop-blur-md flex items-center justify-center z-10">
-                <span className="bg-destructive text-destructive-foreground px-8 py-3 rounded-full text-sm font-bold uppercase tracking-[0.3em] shadow-2xl">
-                  Esgotado
-                </span>
-              </div>
-            )}
-          </div>
+          <Dialog open={isFullscreenOpen} onOpenChange={setIsFullscreenOpen}>
+            <div className="relative bg-card rounded-[2.5rem] overflow-hidden premium-shadow border border-border/30 group">
+              {uniqueImages.length > 0 ? (
+                <Carousel setApi={setApiMain} className="w-full" opts={{ loop: true }}>
+                  <CarouselContent>
+                    {uniqueImages.map((img, index) => (
+                      <CarouselItem key={index}>
+                        <DialogTrigger asChild>
+                          <div className="w-full aspect-square relative cursor-zoom-in overflow-hidden">
+                            <img
+                              src={img}
+                              alt={`${produto.nome_produto} ${index + 1}`}
+                              className={`absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 ${esgotado ? "grayscale opacity-80" : ""}`}
+                            />
+                          </div>
+                        </DialogTrigger>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
 
-          {/* Thumbnails */}
-          {uniqueImages.length > 1 && (
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none px-2">
-              {uniqueImages.map((img, index) => (
-                <button
-                  key={index}
-                  onClick={() => setActiveImage(img)}
-                  className={`relative w-20 h-20 md:w-28 md:h-28 rounded-2xl overflow-hidden border-2 flex-shrink-0 transition-all duration-300 ${activeImage === img ? "border-primary scale-105 shadow-lg" : "border-transparent opacity-40 hover:opacity-100"
-                    }`}
-                >
-                  <img src={img} alt={`Thumb ${index}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
+                  {/* Dots for main carousel */}
+                  {uniqueImages.length > 1 && (
+                    <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-10">
+                      {uniqueImages.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            apiMain?.scrollTo(index);
+                          }}
+                          className={`w-2 h-2 rounded-full transition-all ${currentSlide === index ? "bg-primary w-6" : "bg-white/50 hover:bg-white/80"
+                            }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </Carousel>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <Watch className="w-20 h-20 opacity-10" />
+                </div>
+              )}
+              {esgotado && (
+                <div className="absolute inset-0 bg-background/40 backdrop-blur-md flex items-center justify-center z-10 pointer-events-none">
+                  <span className="bg-destructive text-destructive-foreground px-8 py-3 rounded-full text-sm font-bold uppercase tracking-[0.3em] shadow-2xl">
+                    Esgotado
+                  </span>
+                </div>
+              )}
+              {uniqueImages.length > 0 && (
+                <DialogTrigger asChild>
+                  <button className="absolute top-4 right-4 bg-white/20 backdrop-blur-md hover:bg-white/40 text-black w-10 h-10 rounded-full flex items-center justify-center transition-all z-10 opacity-0 group-hover:opacity-100">
+                    <Maximize2 className="w-5 h-5" />
+                  </button>
+                </DialogTrigger>
+              )}
             </div>
-          )}
+
+            <DialogContent className="max-w-[95vw] w-full max-h-[95vh] h-[95vh] p-2 bg-black/95 border-none flex flex-col gap-4">
+              <DialogTitle className="sr-only">Visualizar Imagem</DialogTitle>
+              <DialogDescription className="sr-only">Galeria de imagens do produto</DialogDescription>
+
+              <div className="flex-1 relative flex items-center justify-center overflow-hidden min-h-0">
+                <Carousel setApi={setApiModal} className="w-full h-full flex flex-col justify-center" opts={{ loop: true }}>
+                  <CarouselContent className="items-center h-full">
+                    {uniqueImages.map((img, index) => (
+                      <CarouselItem key={index} className="flex items-center justify-center h-full">
+                        <img
+                          src={img}
+                          alt={`${produto.nome_produto} ${index + 1}`}
+                          className="max-w-full max-h-[75vh] object-contain"
+                        />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
+              </div>
+
+              {/* Thumbnails in Fullscreen */}
+              {uniqueImages.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto pb-4 pt-2 scrollbar-none px-4 justify-center items-center h-28 shrink-0">
+                  {uniqueImages.map((img, index) => (
+                    <button
+                      key={index}
+                      onClick={() => apiModal?.scrollTo(index)}
+                      className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all duration-300 ${currentSlide === index ? "border-primary scale-110 shadow-lg" : "border-transparent opacity-40 hover:opacity-100"
+                        }`}
+                    >
+                      <img src={img} alt={`Thumb ${index}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Detalhes */}
@@ -197,9 +307,16 @@ export default function ProductDetail() {
             <h1 className="text-4xl md:text-5xl font-serif-elegant font-medium leading-tight text-foreground mb-6">
               {produto.nome_produto}
             </h1>
-            <p className="text-3xl font-light text-foreground/90 tracking-tight">
-              {formatCurrency(preco)}
-            </p>
+            <div className="flex items-end gap-3 mb-6">
+              <p className="text-3xl font-light text-foreground/90 tracking-tight leading-none">
+                {formatCurrency(preco)}
+              </p>
+              {specs?.valor_promocional && Number(specs.valor_promocional) > preco && (
+                <p className="text-xl font-medium text-muted-foreground line-through pb-[3px]">
+                  {formatCurrency(Number(specs.valor_promocional))}
+                </p>
+              )}
+            </div>
 
             {/* Estoque */}
             {!esgotado && (
@@ -231,12 +348,12 @@ export default function ProductDetail() {
               }}
             >
               <ShoppingCart className="w-4 h-4 mr-2.5" />
-              Comprar Agora (Pix ou Cartão)
+              Comprar Agora (Via Pix ou WhatsApp)
             </Button>
 
             {/* Dois botões secundários lado a lado */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button
+            <div className="flex flex-col gap-3">
+              {/* <Button
                 size="lg"
                 variant="outline"
                 className="h-12 text-[10px] font-bold uppercase tracking-[0.15em] rounded-2xl border-border hover:border-green-500 hover:text-green-600 hover:bg-green-500/5 transition-all duration-300"
@@ -245,12 +362,12 @@ export default function ProductDetail() {
               >
                 <MessageCircle className="w-4 h-4 mr-2 text-green-500" />
                 Via WhatsApp
-              </Button>
+              </Button> */}
 
               <Button
                 size="lg"
                 variant="outline"
-                className="h-12 text-[10px] font-bold uppercase tracking-[0.15em] rounded-2xl border-border hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-300"
+                className="w-full h-12 text-[10px] font-bold uppercase tracking-[0.15em] rounded-2xl border-border hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-300"
                 disabled={esgotado}
                 onClick={handleAddToCart}
               >
@@ -271,6 +388,7 @@ export default function ProductDetail() {
             <TabsList className="w-full justify-start bg-transparent border-b border-border/30 rounded-none h-12 p-0 gap-8">
               <TabsTrigger value="descricao" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 text-xs font-bold uppercase tracking-[0.2em]">Detalhes</TabsTrigger>
               <TabsTrigger value="especificacoes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 text-xs font-bold uppercase tracking-[0.2em]">Especificações</TabsTrigger>
+              <TabsTrigger value="avaliacoes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 text-xs font-bold uppercase tracking-[0.2em]">Avaliações ({avaliacoes.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="descricao" className="pt-8">
@@ -319,6 +437,46 @@ export default function ProductDetail() {
                 )}
               </div>
             </TabsContent>
+
+            <TabsContent value="avaliacoes" className="pt-8">
+              {avaliacoes.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground italic font-light">
+                  Nenhuma avaliação para este produto ainda. Seja o primeiro a comprar e avaliar!
+                </div>
+              ) : (
+                <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2">
+                  {avaliacoes.map((av) => (
+                    <div key={av.id} className="border-b border-border/30 pb-6 last:border-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h4 className="font-bold text-sm text-foreground">{av.titulo}</h4>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(av.criado_em).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                          </span>
+                        </div>
+                        <div className="flex gap-0.5 text-yellow-500">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star key={i} className={`w-3.5 h-3.5 ${i < av.estrelas ? "fill-yellow-500 text-yellow-500" : "text-muted"}`} />
+                          ))}
+                        </div>
+                      </div>
+
+                      {av.mensagem && (
+                        <p className="text-sm text-muted-foreground leading-relaxed italic">
+                          "{av.mensagem}"
+                        </p>
+                      )}
+
+                      {av.imagem_url && (
+                        <div className="mt-4 max-w-[200px] rounded-xl overflow-hidden border border-border/30">
+                          <img src={av.imagem_url} alt="Foto da avaliação" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         </div>
       </div>
@@ -338,9 +496,9 @@ export default function ProductDetail() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {relatedProducts.map((p, i) => (
-              <Link 
-                key={p.id} 
-                to={`/produto/${p.id}`} 
+              <Link
+                key={p.id}
+                to={`/produto/${p.id}`}
                 className="group flex flex-col animate-reveal"
                 style={{ animationDelay: `${i * 100}ms` }}
               >
@@ -356,7 +514,20 @@ export default function ProductDetail() {
                       <Watch className="w-12 h-12 opacity-10" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col items-center justify-center backdrop-blur-[2px] gap-4">
+                    <span className="px-6 py-3 bg-white text-black text-[9px] font-bold uppercase tracking-[0.3em] rounded-sm translate-y-4 group-hover:translate-y-0 transition-transform duration-500 shadow-2xl">
+                      Ver Detalhes
+                    </span>
+                    {p.estoque_atual > 0 && (
+                      <button
+                        onClick={(e) => handleAddToCartRelated(e, p)}
+                        className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center translate-y-4 group-hover:translate-y-0 transition-transform duration-500 hover:scale-110 hover:bg-primary/90 shadow-xl"
+                        title="Adicionar à sacola"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="text-center px-2">
                   <p className="text-[9px] text-primary uppercase tracking-[0.3em] font-bold mb-2">{p.genero}</p>

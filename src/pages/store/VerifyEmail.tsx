@@ -113,8 +113,8 @@ export default function VerifyEmail() {
               onClick={handleResend}
               disabled={!canResend || loading}
               className={`inline-flex items-center gap-2 text-sm font-medium transition-all ${canResend
-                  ? "text-primary hover:underline"
-                  : "text-muted-foreground cursor-not-allowed"
+                ? "text-primary hover:underline"
+                : "text-muted-foreground cursor-not-allowed"
                 }`}
             >
               <RotateCcw className={`w-3.5 h-3.5 ${timer > 0 ? "animate-spin-slow" : ""}`} />

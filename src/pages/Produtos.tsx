@@ -29,7 +29,8 @@ const defaultSpecs = {
   peso: "",
   tipo_movimento: "",
   material_caixa: "",
-  resistente_agua: "Não"
+  resistente_agua: "Não",
+  valor_promocional: 0
 };
 
 export default function Produtos() {
@@ -248,9 +249,9 @@ export default function Produtos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-foreground">Produtos</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -311,6 +312,15 @@ export default function Produtos() {
                       <div className="space-y-2">
                         <Label>Margem (%)</Label>
                         <Input type="number" step="0.1" value={form.margem} onChange={(e) => setForm({ ...form, margem: +e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-primary font-medium">Valor Promocional "De" (R$)</Label>
+                        <Input 
+                          value={maskCurrency(Number(specs.valor_promocional) || 0)} 
+                          onChange={(e) => setSpecs({ ...specs, valor_promocional: unmaskCurrency(e.target.value) })} 
+                          placeholder="Ex: 299,90"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1">Opcional. Valor que aparecerá riscado.</p>
                       </div>
                       <div className="space-y-2">
                         <Label>Taxa Débito (%)</Label>

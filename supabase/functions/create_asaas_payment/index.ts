@@ -52,7 +52,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { amount, customer, orderId, redirectUrl, billingType = "PIX" } = await req.json();
+    const { amount, customer, orderId, redirectUrl, billingType = "PIX", creditCard, creditCardHolderInfo } = await req.json();
     const ASAAS_API_KEY = sanitizeApiKey(Deno.env.get("ASAAS_API_KEY"));
 
     if (!ASAAS_API_KEY) {
@@ -98,22 +98,44 @@ serve(async (req: Request) => {
     }
 
     const dueDate = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+    
+    // Preparar payload do pagamento
+    const paymentPayload: any = {
+      customer: asaasCustomerId,
+      billingType: billingType,
+      value: Number(amount),
+      dueDate,
+      externalReference: orderId,
+      description: `Pedido #${orderId.slice(0, 8).toUpperCase()} - Eternus Relogios`,
+    };
+
+    if (billingType === "CREDIT_CARD" && creditCard) {
+      paymentPayload.creditCard = creditCard;
+      paymentPayload.creditCardHolderInfo = {
+        name: creditCardHolderInfo?.name || customer.name,
+        email: creditCardHolderInfo?.email || customer.email,
+        cpfCnpj: onlyDigits(creditCardHolderInfo?.cpfCnpj || customer.cpf),
+        postalCode: onlyDigits(creditCardHolderInfo?.postalCode || customer.address?.cep),
+        addressNumber: creditCardHolderInfo?.addressNumber || customer.address?.numero || "S/N",
+        addressComplement: creditCardHolderInfo?.addressComplement || customer.address?.complemento || undefined,
+        phone: onlyDigits(creditCardHolderInfo?.phone || customer.phone),
+      };
+
+      if (creditCardHolderInfo?.installmentCount) {
+        paymentPayload.installmentCount = Number(creditCardHolderInfo.installmentCount);
+      }
+    } else {
+      paymentPayload.callback = (redirectUrl && billingType !== "PIX" && !redirectUrl.includes("localhost") && !redirectUrl.includes("127.0.0.1"))
+        ? {
+            successUrl: redirectUrl,
+            autoRedirect: true,
+          }
+        : undefined;
+    }
+
     const paymentData = await asaasRequest("/payments", ASAAS_API_KEY, {
       method: "POST",
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType: billingType,
-        value: Number(amount),
-        dueDate,
-        externalReference: orderId,
-        description: `Pedido #${orderId.slice(0, 8).toUpperCase()} - Eternus Relogios`,
-        callback: redirectUrl
-          ? {
-              successUrl: redirectUrl,
-              autoRedirect: true,
-            }
-          : undefined,
-      }),
+      body: JSON.stringify(paymentPayload),
     });
 
     let qrCodeData = null;

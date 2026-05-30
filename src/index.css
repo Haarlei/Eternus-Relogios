@@ -220,7 +220,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
     font-family: 'Inter', sans-serif;
   }
 }
@@ -268,5 +268,18 @@
 
   .luxury-text-shadow {
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Safe area inset for bottom nav on notched devices */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Makes any table scroll horizontally on mobile without breaking layout */
+  .table-responsive {
+    @apply w-full overflow-x-auto -mx-0;
+  }
+  .table-responsive table {
+    @apply min-w-[600px] w-full;
   }
 }

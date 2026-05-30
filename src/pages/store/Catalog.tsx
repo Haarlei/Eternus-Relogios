@@ -3,12 +3,14 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, SlidersHorizontal, Watch, ArrowRight, X } from "lucide-react";
+import { Search, SlidersHorizontal, Watch, ArrowRight, X, ShoppingCart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/contexts/CartContext";
+import { toast } from "sonner";
 
 type ProdutoPublico = {
   id: string;
@@ -23,6 +25,7 @@ type ProdutoPublico = {
 };
 
 export default function Catalog() {
+  const { addItem } = useCart();
   const [produtos, setProdutos] = useState<ProdutoPublico[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -93,6 +96,20 @@ export default function Catalog() {
     setSelectedGenders([]);
     setSelectedBrands([]);
     setPriceRange([0, maxPriceInDb]);
+  };
+
+  const handleAddToCart = (e: React.MouseEvent, produto: ProdutoPublico) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem({
+      id: produto.id,
+      nome_produto: produto.nome_produto,
+      preco: produto.preco_com_margem,
+      imagem_url: produto.imagem_url,
+      quantidade: 1,
+      estoque_disponivel: produto.estoque_atual,
+    });
+    toast.success("Adicionado à sacola!");
   };
 
   return (
@@ -236,10 +253,19 @@ export default function Catalog() {
                       )}
                       
                       {/* Hover Overlay */}
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col items-center justify-center gap-4">
                         <span className="px-6 py-3 bg-white text-black text-[10px] font-bold uppercase tracking-[0.2em] rounded-full translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                           Ver Detalhes
                         </span>
+                        {!esgotado && (
+                          <button
+                            onClick={(e) => handleAddToCart(e, produto)}
+                            className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center translate-y-4 group-hover:translate-y-0 transition-transform duration-500 hover:scale-110 hover:bg-primary/90 shadow-xl"
+                            title="Adicionar à sacola"
+                          >
+                            <ShoppingCart className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
 
                       {esgotado && (

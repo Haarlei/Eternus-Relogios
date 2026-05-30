@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "../image/eternus.png";
 import { FooterModal } from "./store/FooterModals";
+import { CartDrawer } from "./store/CartDrawer";
 
 export default function StoreLayout({ children }: { children: ReactNode }) {
-  const { totalItems } = useCart();
+  const { totalItems, setIsCartOpen } = useCart();
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function StoreLayout({ children }: { children: ReactNode }) {
   const isCartPage = location.pathname === "/carrinho";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans-elegant">
+    <div className="min-h-screen bg-background flex flex-col font-sans-elegant w-full max-w-[100vw] overflow-x-hidden">
       <header
         className={`fixed top-0 z-50 w-full transition-all duration-500 ${isHome
           ? (scrolled 
@@ -105,7 +106,7 @@ export default function StoreLayout({ children }: { children: ReactNode }) {
                 <button
                   className={`relative group p-2 transition-colors ${(isHome && !scrolled) ? "text-white hover:text-primary" : "text-foreground hover:text-primary"
                     }`}
-                  onClick={() => navigate("/carrinho")}
+                  onClick={() => setIsCartOpen(true)}
                 >
                   <ShoppingBag className="w-5 h-5 transition-transform group-hover:scale-110" strokeWidth={1.5} />
                   {totalItems > 0 && (
@@ -123,6 +124,8 @@ export default function StoreLayout({ children }: { children: ReactNode }) {
       <main className="flex-1 flex flex-col pt-[var(--header-offset,0)]">
         {children}
       </main>
+
+      <CartDrawer />
 
       <footer className="bg-secondary/50 border-t border-border/30 pt-24 pb-12 mt-20">
         <div className="container mx-auto px-6">

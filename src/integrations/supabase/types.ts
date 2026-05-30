@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -23,6 +23,7 @@ export type Database = {
           mensagem: string | null
           titulo: string
           user_id: string
+          produto_id: string | null
         }
         Insert: {
           criado_em?: string
@@ -32,6 +33,7 @@ export type Database = {
           mensagem?: string | null
           titulo: string
           user_id: string
+          produto_id?: string | null
         }
         Update: {
           criado_em?: string
@@ -41,6 +43,7 @@ export type Database = {
           mensagem?: string | null
           titulo?: string
           user_id?: string
+          produto_id?: string | null
         }
         Relationships: []
       }
@@ -305,6 +308,7 @@ export type Database = {
           id: string
           itens: Json
           metodo_pagamento: string
+          motivo_cancelamento: string | null
           order_nsu: string | null
           status: string
           total: number
@@ -318,6 +322,7 @@ export type Database = {
           id?: string
           itens: Json
           metodo_pagamento: string
+          motivo_cancelamento?: string | null
           order_nsu?: string | null
           status?: string
           total: number
@@ -331,6 +336,7 @@ export type Database = {
           id?: string
           itens?: Json
           metodo_pagamento?: string
+          motivo_cancelamento?: string | null
           order_nsu?: string | null
           status?: string
           total?: number

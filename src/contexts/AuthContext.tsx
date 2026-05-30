@@ -28,7 +28,7 @@ function mapAuthError(message: string): string {
   if (message.includes("Too many requests")) return "Muitas tentativas. Aguarde alguns minutos.";
   if (message.includes("User already registered")) return "Este e-mail já está cadastrado.";
   if (message.includes("Password should be at least")) return "A senha deve ter no mínimo 6 caracteres.";
-  return "Erro ao autenticar. Tente novamente.";
+  return `Erro ao autenticar: ${message}`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -53,6 +53,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           is_admin: data.is_admin 
         });
       } else {
+        // Fallback: If user session is active but profile row is missing (due to RLS block during unconfirmed signup),
+        // we can now safely insert it since the user is authenticated.
+        let nome = "";
+        let telefone = "";
+        
+        // 1. Try local backup first (extremely reliable, immediate, immune to Auth metadata delays)
+        const localDataStr = localStorage.getItem(`pending_profile_${userId}`);
+        if (localDataStr) {
+          try {
+            const localData = JSON.parse(localDataStr);
+            nome = localData.nome || "";
+            telefone = localData.telefone || "";
+          } catch (e) {
+            console.error("Error parsing local profile backup:", e);
+          }
+        }
+        
+        // 2. Fallback to auth metadata if local backup isn't present
+        if (!nome) {
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser) {
+            nome = authUser.user_metadata?.nome || authUser.user_metadata?.full_name || "";
+            telefone = authUser.user_metadata?.telefone || authUser.user_metadata?.phone || "";
+          }
+        }
+        
+        if (nome) {
+          const { error: insertError } = await supabase.from("perfis").insert({
+            id: userId,
+            nome,
+            telefone,
+            is_admin: false
+          } as any);
+          
+          if (!insertError) {
+            // Clean up local storage backup on success
+            localStorage.removeItem(`pending_profile_${userId}`);
+            
+            setUser({
+              id: userId,
+              email,
+              nome,
+              telefone,
+              is_admin: false
+            });
+            return;
+          } else {
+            console.error("Error inserting fallback profile:", insertError);
+          }
+        }
+        
         setUser({ id: userId, email });
       }
     } catch (err) {
@@ -89,9 +140,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, nome: string, telefone: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: {
+          nome,
+          telefone
+        }
+      }
+    });
     if (error) throw new Error(mapAuthError(error.message));
     if (data.user) {
+      // Back up locally to ensure we can restore it on loadProfile after verification
+      localStorage.setItem(`pending_profile_${data.user.id}`, JSON.stringify({ nome, telefone }));
+      
+      // Try to insert profile row immediately (will fail if unconfirmed, succeed if auto-confirmed)
       await supabase.from("perfis").insert({
         id: data.user.id,
         nome,

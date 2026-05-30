@@ -18,6 +18,7 @@ export default function Dashboard() {
     totalAReceber: 0,
     lucroEsperado: 0,
     faturamentoLiquido: 0,
+    recebidoNoMes: 0,
     valorEmAtraso: 0,
     taxaInadimplencia: 0,
     receitaPrevista: 0,
@@ -32,30 +33,98 @@ export default function Dashboard() {
   }, [user]);
 
   const loadDashboard = async () => {
-    const [produtosRes, vendasRes, parcelasRes] = await Promise.all([
+    const [produtosRes, vendasRes, parcelasRes, pedidosRes] = await Promise.all([
       supabase.from("produtos").select("preco_fornecedor, estoque_inicial"),
       supabase.from("vendas").select("id, produto_id, quantidade, metodo_pagamento, tipo_cartao, valor_bruto, valor_liquido, criado_em, status_pagamento, produtos(nome_produto)").order("criado_em", { ascending: false }),
-      supabase.from("parcelas").select("id, venda_id, valor_parcela, status, data_vencimento"),
+      supabase.from("parcelas").select("id, venda_id, valor_parcela, status, data_vencimento, data_pagamento"),
+      supabase.from("pedidos").select("id, itens, total, metodo_pagamento, criado_em, status").neq("status", "Aguardando Pagamento").neq("status", "Cancelado"),
     ]);
 
     const produtos = produtosRes.data || [];
     const vendas = vendasRes.data || [];
     const parcelas = parcelasRes.data || [];
+    const pedidos = pedidosRes.data || [];
+
+    // Map online order items to virtual sales records
+    const mappedPedidosVendas: any[] = [];
+    pedidos.forEach((p: any) => {
+      const orderItems = (p.itens as any[]) || [];
+      orderItems.forEach((item: any) => {
+        const itemGross = item.preco * item.quantidade;
+        // Asaas fee is roughly 3% or we can just count it as gross for simplicity
+        const feePercent = p.metodo_pagamento === "Cartão de Crédito" ? 0.04 : 0.02;
+        const itemNet = itemGross * (1 - feePercent);
+        
+        mappedPedidosVendas.push({
+          id: `${p.id}_${item.produto_id}`,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          metodo_pagamento: p.metodo_pagamento,
+          tipo_cartao: p.metodo_pagamento === "Cartão de Crédito" ? "Crédito" : null,
+          valor_bruto: itemGross,
+          valor_liquido: itemNet,
+          criado_em: p.criado_em,
+          status_pagamento: "pago",
+          produtos: {
+            nome_produto: item.nome_produto
+          },
+          isOnlinePedido: true
+        });
+      });
+    });
+
+    const combinedVendas = [...vendas, ...mappedPedidosVendas];
 
     const totalInvestido = produtos.reduce((s, p) => s + p.preco_fornecedor * p.estoque_inicial, 0);
     const totalAReceber = parcelas.filter(p => p.status !== "pago").reduce((s, p) => s + p.valor_parcela, 0);
-    const faturamentoLiquido = vendas.reduce((s, v) => s + v.valor_liquido, 0);
+    
+    let faturamentoLiquido = 0;
+    let recebidoNoMes = 0;
+
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+
+    // 1. Vendas diretas (pagas à vista/pix) e pedidos online
+    combinedVendas.forEach((v: any) => {
+      const isPrazoOrParcelado = v.metodo_pagamento === "prazo" || v.metodo_pagamento === "parcelado";
+      const isDiretaPaga = v.isOnlinePedido || (!isPrazoOrParcelado && v.status_pagamento === "pago");
+
+      if (isDiretaPaga) {
+        faturamentoLiquido += v.valor_liquido;
+        
+        const dataVenda = new Date(v.criado_em);
+        if (dataVenda.getMonth() === mesAtual && dataVenda.getFullYear() === anoAtual) {
+          recebidoNoMes += v.valor_liquido;
+        }
+      }
+    });
+
+    // 2. Parcelas pagas
+    const parcelasPagas = parcelas.filter(p => p.status === "pago");
+    parcelasPagas.forEach((p: any) => {
+      faturamentoLiquido += p.valor_parcela;
+
+      if (p.data_pagamento) {
+        // Tratar o timezone (split by T or -) para garantir que seja no mês correto
+        const [ano, mes] = p.data_pagamento.split("-").map(Number);
+        if (mes - 1 === mesAtual && ano === anoAtual) {
+          recebidoNoMes += p.valor_parcela;
+        }
+      }
+    });
+
     const lucroEsperado = faturamentoLiquido - totalInvestido;
     const parcelasAtrasadas = parcelas.filter(p => p.status === "atrasado");
     const valorEmAtraso = parcelasAtrasadas.reduce((s, p) => s + p.valor_parcela, 0);
     const taxaInadimplencia = parcelas.length > 0 ? (parcelasAtrasadas.length / parcelas.length) * 100 : 0;
     const receitaPrevista = parcelas.filter(p => p.status === "pendente").reduce((s, p) => s + p.valor_parcela, 0);
 
-    setStats({ totalInvestido, totalAReceber, lucroEsperado, faturamentoLiquido, valorEmAtraso, taxaInadimplencia, receitaPrevista });
+    setStats({ totalInvestido, totalAReceber, lucroEsperado, faturamentoLiquido, recebidoNoMes, valorEmAtraso, taxaInadimplencia, receitaPrevista });
 
     // Top 5 products
     const prodVendas: Record<string, { nome: string; total: number }> = {};
-    vendas.forEach((v: any) => {
+    combinedVendas.forEach((v: any) => {
       const nome = v.produtos?.nome_produto || "Desconhecido";
       if (!prodVendas[v.produto_id]) prodVendas[v.produto_id] = { nome, total: 0 };
       prodVendas[v.produto_id].total += v.quantidade;
@@ -64,12 +133,12 @@ export default function Dashboard() {
 
     // Payment methods
     const metodos: Record<string, number> = {};
-    vendas.forEach(v => {
+    combinedVendas.forEach(v => {
       metodos[v.metodo_pagamento] = (metodos[v.metodo_pagamento] || 0) + 1;
     });
     setMetodosPagamento(Object.entries(metodos).map(([name, value]) => ({ name, value })));
 
-    setVendasRecentes(vendas.slice(0, 10));
+    setVendasRecentes(combinedVendas.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime()).slice(0, 10));
   };
 
   const handleDeleteVenda = async (v: any) => {
@@ -103,12 +172,12 @@ export default function Dashboard() {
   };
 
   const statCards = [
+    { title: "Faturamento Real", value: formatCurrency(stats.faturamentoLiquido), icon: TrendingUp, color: "text-success" },
+    { title: "Recebido Neste Mês", value: formatCurrency(stats.recebidoNoMes), icon: DollarSign, color: "text-emerald-500" },
     { title: "Total Investido", value: formatCurrency(stats.totalInvestido), icon: DollarSign, color: "text-primary" },
-    { title: "Faturamento Líquido", value: formatCurrency(stats.faturamentoLiquido), icon: TrendingUp, color: "text-success" },
     { title: "Lucro Esperado", value: formatCurrency(stats.lucroEsperado), icon: BarChart3, color: "text-accent" },
     { title: "Valor em Atraso", value: formatCurrency(stats.valorEmAtraso), icon: AlertTriangle, color: "text-destructive" },
     { title: "Receita Prevista", value: formatCurrency(stats.receitaPrevista), icon: ShoppingCart, color: "text-primary" },
-    { title: "Inadimplência", value: formatPercent(stats.taxaInadimplencia), icon: CreditCard, color: "text-warning" },
   ];
 
   return (
@@ -166,7 +235,7 @@ export default function Dashboard() {
       <Card>
         <CardHeader><CardTitle className="text-base">Vendas Recentes</CardTitle></CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="table-responsive">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
@@ -189,9 +258,13 @@ export default function Dashboard() {
                     <td className="py-3 px-2 text-right">{formatCurrency(v.valor_bruto)}</td>
                     <td className="py-3 px-2 text-right">{formatCurrency(v.valor_liquido)}</td>
                     <td className="py-3 px-2 text-center">
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteVenda(v)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      {v.isOnlinePedido ? (
+                        <span className="text-[10px] text-muted-foreground italic font-medium bg-muted px-2.5 py-1 rounded-full border border-border/50">Pedido Online</span>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteVenda(v)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
